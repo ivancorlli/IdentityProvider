@@ -50,6 +50,16 @@ Services.ConfigureApplicationCookie(opts =>
     opts.LoginPath = "/signin";
 });
 
+// External Authentications
+Services.AddAuthentication()
+    .AddGoogle(
+        opts=>{
+            opts.ClientId= builder.Configuration["Authentication:Google:ClientId"]!;
+            opts.ClientSecret= builder.Configuration["Authentication:Google:Secret"]!;
+            opts.SignInScheme = IdentityConstants.ExternalScheme;
+        });
+
+
 // Auth Schema
 Services.AddAuthorization();
 

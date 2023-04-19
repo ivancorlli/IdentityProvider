@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using IdentityProvider.Interface;
 using Microsoft.Extensions.Options;
 using IdentityProvider.Options;
+using Microsoft.AspNetCore.Authentication;
 
 namespace IdentityProvider.Pages
 {
@@ -17,6 +18,7 @@ namespace IdentityProvider.Pages
         private readonly IEmailSender _emailSender;
         public string? ReturnUrl { get; set; } = string.Empty;
         public string Error { get; set; } = string.Empty;
+        public List<AuthenticationScheme> ExternalLogins {get;set;} = new();
         [BindProperty]
         public LoginModel Login { get; set; } = new LoginModel();
 
@@ -33,7 +35,7 @@ namespace IdentityProvider.Pages
             _defaultReturnUrl = retunrn;
         }
 
-        public IActionResult? OnGet(string? returnUrl = null)
+        public async Task<IActionResult?> OnGetAsync(string? returnUrl = null)
         {
 
             if (string.IsNullOrEmpty(returnUrl))
@@ -69,6 +71,8 @@ namespace IdentityProvider.Pages
                 if(HttpContext.User.Identity.IsAuthenticated)
                     return Redirect(ReturnUrl);
             
+            var list = await _signIn.GetExternalAuthenticationSchemesAsync();
+            ExternalLogins = list.ToList();
             return null;
         }
 

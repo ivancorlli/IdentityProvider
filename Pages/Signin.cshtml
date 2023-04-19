@@ -9,7 +9,21 @@
 
 	<div class="row w-100 justify-content-center">
 		<div class="col-md-6 col-lg-5">
-
+			@{
+				if(Model.ExternalLogins.Count > 0)
+				{
+					<form id="external-account" asp-page="/ExternalLogin" asp-route-returnUrl="@Model.ReturnUrl" method="post" class="form-horizontal">
+                        <div>
+                            <p>
+                                @foreach (var provider in Model.ExternalLogins)
+                                {
+                                    <button type="submit" class="btn btn-primary" name="provider" value="@provider.Name" title="Log in using your @provider.DisplayName account">@provider.DisplayName</button>
+                                }
+                            </p>
+                        </div>
+                    </form>
+				}
+			}
 			<form class="row my-2 justify-content-center" method="post" asp-page-handler="ToSignUp">
 				<div>
 					<button class="w-100 btn btn-primary rounded-pill" type="submit">Continuar con facebook</button>
