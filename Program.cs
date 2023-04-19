@@ -13,7 +13,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 var Services = builder.Services;
 // My services
-Services.AddScoped<IEmailSender,EmailSender>();
+Services.AddScoped<IEmailSender, EmailSender>();
 Services.Configure<EmailerOptions>(options => builder.Configuration.GetSection("EmailSettings").Bind(options));
 Services.Configure<ReturnUrlOptions>(options => builder.Configuration.GetSection("ReturnUrl").Bind(options));
 
@@ -25,24 +25,26 @@ Services.AddRazorPages();
 Services.AddSingleton<DevKeys>();
 
 // Database
-Services.AddDbContext<ApplicationDbContext>(o => {
+Services.AddDbContext<ApplicationDbContext>(o =>
+{
     o.UseMySql(
         builder.Configuration.GetConnectionString("OAuthServer"),
-        ServerVersion.Create(new Version(10,7,8),ServerType.MariaDb),
-        x=>x.EnableRetryOnFailure()
+        ServerVersion.Create(new Version(10, 7, 8), ServerType.MariaDb),
+        x => x.EnableRetryOnFailure()
         );
 });
 
 // identity
-Services.AddIdentity<ApplicationUser, IdentityRole>(o=> {
+Services.AddIdentity<ApplicationUser, IdentityRole>(o =>
+{
     o.SignIn.RequireConfirmedAccount = true;
 
     o.User.RequireUniqueEmail = true;
     o.Password.RequireNonAlphanumeric = false;
 
-    })
+})
     .AddEntityFrameworkStores<ApplicationDbContext>()
-	.AddDefaultTokenProviders();
+    .AddDefaultTokenProviders();
 
 Services.ConfigureApplicationCookie(opts =>
 {
@@ -53,11 +55,33 @@ Services.ConfigureApplicationCookie(opts =>
 // External Authentications
 Services.AddAuthentication()
     .AddGoogle(
-        opts=>{
-            opts.ClientId= builder.Configuration["Authentication:Google:ClientId"]!;
-            opts.ClientSecret= builder.Configuration["Authentication:Google:Secret"]!;
+        opts =>
+        {
+            opts.ClientId = builder.Configuration["Authentication:Google:ClientId"]!;
+            opts.ClientSecret = builder.Configuration["Authentication:Google:Secret"]!;
             opts.SignInScheme = IdentityConstants.ExternalScheme;
-        });
+        })
+    .AddFacebook(opts =>
+    {
+        opts.ClientId = builder.Configuration["Authentication:Facebook:ClientId"]!;
+        opts.ClientSecret = builder.Configuration["Authentication:Facebook:Secret"]!;
+        opts.SignInScheme = IdentityConstants.ExternalScheme;
+    });
+
+Services.Configure<CookiePolicyOptions>(options =>
+{
+    options.MinimumSameSitePolicy = SameSiteMode.Unspecified;
+    options.OnAppendCookie = cookieContext => {
+        if (cookieContext.CookieOptions.SameSite == SameSiteMode.None)
+            cookieContext.CookieOptions.SameSite = SameSiteMode.Unspecified;
+    };
+    options.OnDeleteCookie = cookieContext =>
+    {
+        if (cookieContext.CookieOptions.SameSite == SameSiteMode.None)
+            cookieContext.CookieOptions.SameSite = SameSiteMode.Unspecified;
+    };
+});
+
 
 
 // Auth Schema
@@ -67,7 +91,7 @@ Services.AddAuthorization();
 var app = builder.Build();
 
 app.UseStaticFiles();
-
+app.UseCookiePolicy();
 
 app.UseRouting();
 
