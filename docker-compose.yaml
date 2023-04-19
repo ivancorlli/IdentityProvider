@@ -1,0 +1,29 @@
+version: '3'
+services:
+  maria:
+    image: mariadb:10.7.8-focal
+    restart: always
+    ports:
+      - 3306:3306
+    environment:
+      - MARIADB_RANDOM_ROOT_PASSWORD=true
+      - MARIADB_DATABASE=oauthserver
+      - MARIADB_USER=oauthserver
+      - MARIADB_PASSWORD=oauthserver
+    volumes:
+      - identity_data:/var/lib/mysql
+  app:
+    build:
+      dockerfile: "Dockerfile"
+    container_name: app
+    ports:
+      - 5005:5005
+    environment:
+      - ConnectionStrings.OAuthServer:server=localhost;database=oauthserver;user id=oauthserver;password=oauthserver;port=3306
+    depends_on:
+      - maria
+volumes:
+  identity_data:
+    driver: local
+
+
