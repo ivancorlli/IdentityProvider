@@ -5,6 +5,7 @@ using IdentityProvider.Helper;
 using IdentityProvider.Interface;
 using IdentityProvider.Options;
 using IdentityProvider.Repo;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Pomelo.EntityFrameworkCore.MySql.Infrastructure;
@@ -22,7 +23,12 @@ Services.AddRazorPages();
 
 
 // Keys
+var path = Path.Combine(builder.Environment.ContentRootPath, "./Key");
 Services.AddSingleton<DevKeys>();
+Services.AddDataProtection()
+        .SetApplicationName("IDP")
+        .PersistKeysToFileSystem(new DirectoryInfo(path))
+        .SetDefaultKeyLifetime(TimeSpan.FromDays(14));
 
 // Database
 Services.AddDbContext<ApplicationDbContext>(o =>

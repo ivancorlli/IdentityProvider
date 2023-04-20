@@ -19,7 +19,18 @@ services:
     ports:
       - 5005:5005
     environment:
-      - ConnectionStrings.OAuthServer:server=localhost;database=oauthserver;user id=oauthserver;password=oauthserver;port=3306
+      - ConnectionStrings.OAuthServer:server=maria;database=oauthserver;user id=oauthserver;password=oauthserver;port=3306
+      - EmailSettings.Host=sandbox.smtp.mailtrap.io
+      - EmailSettings.Port=2525
+      - EmailSettings.Username=4551df34b90de0
+      - EmailSettings.Password=8507d47345c7dc
+      - EmailSettings.Email=noreplay@muver.com
+      - ReturnUrl.Default=/ProductionReturn
+      - Authentication.Google.ClientId=571704633649-9f2gubqi6bhi8ea2jsbr1r868s1bd9hh.apps.googleusercontent.com
+      - Authentication.Google.Secret=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
+      - Authentication.Facebook.ClientId=709007244037124
+      - Authentication.Facebook.Secret=17bb4aa8f5c2ea7a3497950366e234ba
+      - ASPNETCORE_ENVIRONMENT=Production 
     depends_on:
       - maria
 volumes:

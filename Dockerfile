@@ -16,4 +16,4 @@ ENV DOTNET_RUNNING_IN_CONTAINER=true \
   ASPNETCORE_URLS=http://+:5005 \
   ASPNETCORE_ENVIRONMENT=Production
 EXPOSE 5005
-ENTRYPOINT ["dotnet", "OAuthServer.dll"]
+ENTRYPOINT ["dotnet", "IdentityProvider.dll"]
