@@ -12,33 +12,53 @@
 			@{
 				if(Model.ExternalLogins.Count > 0)
 				{
-					<form id="external-account" asp-page="/ExternalLogin" asp-route-returnUrl="@Model.ReturnUrl" method="post" class="form-horizontal">
+					foreach (var provider in Model.ExternalLogins)
+                    {
+					<form 
+					id="external-account" 
+					asp-page="/ExternalLogin" 
+					asp-route-returnUrl="@Model.SocialReturn" 
+					method="post" 
+					class="row my-2 justify-content-center">
                         <div>
-                            <p>
-                                @foreach (var provider in Model.ExternalLogins)
-                                {
-                                    <button type="submit" class="btn btn-primary" name="provider" value="@provider.Name" title="Log in using your @provider.DisplayName account">@provider.DisplayName</button>
-                                }
-                            </p>
+						  @{
+							switch (provider.DisplayName)
+							{
+								case "Google":
+									<button 
+									type="submit"
+									class="w-100 btn btn-outline-secondary rounded-pill" 
+									name="provider" 
+									value="@provider.Name">
+									Continuar con google
+									</button>
+									break;
+								case "Facebook":
+									<button 
+									type="submit"
+									class="w-100 btn btn-primary rounded-pill" 
+									name="provider" 
+									value="@provider.Name">
+									Continuar con facebook
+									</button>
+									break;
+								default:
+									<button 
+									type="submit"
+									class="w-100 btn btn-primary rounded-pill" 
+									name="provider" 
+									value="@provider.Name">
+									Continuar con @provider.DisplayName!.ToLower()
+									</button>
+									break;
+							}
+						  }
                         </div>
                     </form>
+					}
 				}
 			}
-			<form class="row my-2 justify-content-center" method="post" asp-page-handler="ToSignUp">
-				<div>
-					<button class="w-100 btn btn-primary rounded-pill" type="submit">Continuar con facebook</button>
-				</div>
-			</form>
-			<form class="row my-2 justify-content-center" method="post" asp-page-handler="ToSignUp">
-				<div>
-					<button class="w-100 btn btn-dark rounded-pill" type="submit">Continuar con apple</button>
-				</div>
-			</form>
-			<form class="row justify-content-center" method="post" asp-page-handler="ToSignUp">
-				<div>
-					<button class="w-100 btn btn-outline-secondary rounded-pill" type="submit">Continuar con google</button>
-				</div>
-			</form>
+
 			<div class="row my-3 justify-content-center align-items-center text-center">
 				<div class="col-3 flex-grow-1">
 					<div class="border border-bottom-1 border-light"></div>
@@ -66,12 +86,10 @@
 						<div class="form-floating mb-3">
 							<input type="email" asp-for="Login.Email" class="form-control" autocomplete="on" aria-required="true"/>
 							<label asp-for="Login.Email" class="form-label"></label>
-							<span asp-validation-for="Login.Email" class="text-danger"></span>
 						</div>
 						<div class="form-floating mb-3">
 							<input asp-for="Login.Password" class="form-control" aria-required="true"/>
 							<label asp-for="Login.Password" class="form-label"></label>
-							<span asp-validation-for="Login.Password" class="text-danger"></span>
 							<div>
 								<a href="/ForgotPassword" class="text-black custom-link text-end ">Olvidaste tu contraseña?</a>
 							</div>

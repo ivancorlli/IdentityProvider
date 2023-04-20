@@ -17,6 +17,7 @@ namespace IdentityProvider.Pages
         private readonly IOptions<ReturnUrlOptions> _defaultReturnUrl;
         private readonly IEmailSender _emailSender;
         public string? ReturnUrl { get; set; } = string.Empty;
+        public string? SocialReturn {get;set;} = string.Empty;
         public string Error { get; set; } = string.Empty;
         public List<AuthenticationScheme> ExternalLogins {get;set;} = new();
         [BindProperty]
@@ -40,26 +41,27 @@ namespace IdentityProvider.Pages
 
             if (string.IsNullOrEmpty(returnUrl))
             {
-                ReturnUrl = _defaultReturnUrl.Value.Default;
-
+                ReturnUrl = Url.Content(_defaultReturnUrl.Value.Default);
+                SocialReturn = Url.Content(_defaultReturnUrl.Value.Default);
             }
             else
             {
                 var url = HttpContext.Request.QueryString.Value!;
+                SocialReturn = returnUrl;
                 if (url.Contains("?ReturnUrl="))
                 {
                     var split = url.Split("?ReturnUrl=");
-                    ReturnUrl = split[1];
+                    ReturnUrl = Url.Content(split[1]);
                 }
                 else if (url.Contains("?returnUrl="))
                 {
                     var split = url.Split("?returnUrl=");
-                    ReturnUrl = split[1];
+                    ReturnUrl = Url.Content(split[1]);
                 }
                 else if (url.Contains("?returnurl="))
                 {
                     var split = url.Split("?returnurl=");
-                    ReturnUrl = split[1];
+                    ReturnUrl = Url.Content(split[1]);
                 }
                 else
                 {
@@ -69,8 +71,11 @@ namespace IdentityProvider.Pages
 
             if(HttpContext.User.Identity != null) 
                 if(HttpContext.User.Identity.IsAuthenticated)
+                {
                     return Redirect(ReturnUrl);
+                }
             
+            await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
             var list = await _signIn.GetExternalAuthenticationSchemesAsync();
             ExternalLogins = list.ToList();
             return null;
@@ -80,17 +85,18 @@ namespace IdentityProvider.Pages
         {
             if (string.IsNullOrEmpty(returnUrl))
             {
-                ReturnUrl = _defaultReturnUrl.Value.Default;
+                ReturnUrl = Url.Content(_defaultReturnUrl.Value.Default);
 
             }
             else
             {
-                ReturnUrl = returnUrl;
+                ReturnUrl = Url.Content(returnUrl);
 
             }
             if (ModelState.IsValid)
             {
-                // Conifig return
+                var list = await _signIn.GetExternalAuthenticationSchemesAsync();
+                ExternalLogins = list.ToList();
 
                 ApplicationUser? user;
                 if (Login.Email.Contains(char.Parse("@")))
@@ -107,6 +113,12 @@ namespace IdentityProvider.Pages
 
                 if (user != null)
                 {
+                    // Si la contrasenia es null, entonces existe el usuario pero resgistrado con un provedor
+                    if(string.IsNullOrEmpty(user.PasswordHash))
+                    {
+                        Error = "Usuario inexistente";
+                        return Page();
+                    }
                     var result = await _signIn.PasswordSignInAsync(user, Login.Password, Login.Remember, lockoutOnFailure: false);
                     if (result.Succeeded)
                     {
@@ -149,7 +161,7 @@ namespace IdentityProvider.Pages
 
         public IActionResult OnPostToSignUp(string url)
         {
-            return Redirect($"/signup?ReturnUrl={url}");
+            return Redirect($"/signup?ReturnUrl={Url.Content(url)}");
         }
     }
 }

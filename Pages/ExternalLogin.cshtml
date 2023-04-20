@@ -10,9 +10,27 @@
             @{
                 if (!string.IsNullOrEmpty(Model.Error))
                 {
-                    <div class="alert alert-danger" role="alert">
-                        @Model.Error
+                    <div class="row w-100 justify-content-center">
+                        <div class="alert alert-danger" role="alert">
+                            @Model.Error
+                        </div>
                     </div>
+                }
+            }
+            @{
+                if (Model.AllowBack)
+                {
+                    <form 
+                    class="row my-3 justify-content-start" 
+                    method="post" 
+                    asp-page-handler="ToSignIn"
+                    asp-route-url="@Model.ReturnUrl">
+                            <button 
+                            class="w-50 btn btn-outline-secondary rounded-pill text-center" 
+                            type="submit">
+                            Iniciar Sesion
+                        </button>
+                    </form>
                 }
             }
         </div>

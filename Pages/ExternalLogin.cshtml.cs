@@ -15,22 +15,28 @@ public class ExternalLogin : PageModel
 {
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IUserStore<ApplicationUser> _userStore;
+    private readonly IUserLoginStore<ApplicationUser> _userLogin;
     private readonly IOptions<ReturnUrlOptions> _defaultReturn;
     private readonly IEmailSender _emailSender;
 
     public string ReturnUrl { get; set; } = string.Empty;
     public string Error { get; set; } = string.Empty;
+    public bool AllowBack { get; set; } = false;
     public ExternalLogin(
         SignInManager<ApplicationUser> signInManager,
         UserManager<ApplicationUser> userManager,
+        IUserStore<ApplicationUser> userStore,
         IOptions<ReturnUrlOptions> returnUrl,
         IEmailSender emailSender
         )
     {
         _signInManager = signInManager;
         _userManager = userManager;
+        _userStore = userStore;
         _defaultReturn = returnUrl;
         _emailSender = emailSender;
+        _userLogin = GetLogins();
     }
 
     public IActionResult OnGet() => RedirectToPage("/Signin");
@@ -62,9 +68,17 @@ public class ExternalLogin : PageModel
         var result = await _signInManager.ExternalLoginSignInAsync(info.LoginProvider, info.ProviderKey, isPersistent: false, bypassTwoFactor: true);
         if (result.Succeeded)
         {
-            return LocalRedirect(returnUrl);
-        } else if (result.IsLockedOut) {
-            return RedirectToPage("./Lockout");
+            return Redirect(returnUrl);
+        }
+        else if (result.IsNotAllowed)
+        {
+            Error = "Debes verificar tu cuenta, por favor revisa tu correo electronico";
+            AllowBack = true;
+            return Page();
+        }
+        else if (result.IsLockedOut)
+        {
+            return RedirectToPage("/Lockout");
         }
         else
         {
@@ -80,6 +94,7 @@ public class ExternalLogin : PageModel
             {
                 // Si no tiene email, mostramos error
                 Error = $"Se produjo un error al obtener tus datos de {info.ProviderDisplayName}.";
+                AllowBack = true;
                 return Page();
             }
         }
@@ -105,7 +120,8 @@ public class ExternalLogin : PageModel
             if (user == null)
             {
                 // Creamos un nuevo usuario
-                user = new ApplicationUser { 
+                user = new ApplicationUser
+                {
                     Email = email,
                     UserName = email
                 };
@@ -139,7 +155,8 @@ public class ExternalLogin : PageModel
                         // await _emailSender.SendWelcome(user.Email.ToString());
                         await _emailSender.SendConfirmationEmail(user.Email!.ToString(), callback!);
                         return RedirectToPage("/SignupConfirmation", new { email = user.Email, returnUrl });
-                    }else
+                    }
+                    else
                     {
                         foreach (var error in result.Errors)
                         {
@@ -163,9 +180,89 @@ public class ExternalLogin : PageModel
             else
             {
                 // Si el usuario ya ha sido registrado
-                return RedirectToPage("/Signin", new {returnUrl});
+
+                // Le agregamos el proveedor
+                var providers = await _userLogin.GetLoginsAsync(user, CancellationToken.None);
+                var exists = providers.Where(x => x.LoginProvider == info.LoginProvider).ToList();
+                if (exists.Count > 0)
+                {
+                    Error = "Tu cuenta ya ha registrada";
+                    return Page();
+                }
+                else
+                {
+                    var result = await _userManager.AddLoginAsync(user, info);
+                    if (result.Succeeded)
+                    {
+                        if (user.EmailConfirmed)
+                        {
+                            var login = await _signInManager.ExternalLoginSignInAsync(info.LoginProvider, info.ProviderKey, isPersistent: false, bypassTwoFactor: true);
+                            if (login.Succeeded)
+                            {
+                                return Redirect(returnUrl);
+                            }
+                            else if (login.IsNotAllowed)
+                            {
+                                Error = "Debes verificar tu cuenta, por favor revisa tu correo electronico";
+                                AllowBack = true;
+                                return Page();
+                            }
+                            else if (login.IsLockedOut)
+                            {
+                                return RedirectToPage("./Lockout");
+                            }
+                            else
+                            {
+                                Error = "No pudimos completar tu ingreso";
+                                return Page();
+                            }
+                        }
+                        else
+                        {
+                            var userId = await _userManager.GetUserIdAsync(user);
+                            var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+                            code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
+                            var exp = DateTimeOffset.UtcNow.AddMinutes(5).ToUnixTimeSeconds();
+                            var callback = Url.Page(
+                                pageName: "/ConfirmEmail",
+                                pageHandler: null,
+                                values: new
+                                {
+                                    userId,
+                                    code,
+                                    returnUrl = _defaultReturn.Value.Default,
+                                    exp = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(exp.ToString())),
+                                },
+                                protocol: Request.Scheme
+                                );
+                            // Send Email
+                            // await _emailSender.SendWelcome(user.Email.ToString());
+                            await _emailSender.SendConfirmationEmail(user.Email!.ToString(), callback!);
+                            return RedirectToPage("/SignupConfirmation", new { email = user.Email, returnUrl });
+                        }
+                    }
+                    else
+                    {
+                        foreach (var error in result.Errors)
+                        {
+                            Error = error.Description;
+                            break;
+                        }
+                        return Page();
+                    }
+
+                }
             }
         }
 
+    }
+    public IActionResult OnPostToSignIn(string url)
+    {
+        
+        return Redirect($"/signin?ReturnUrl={Url.Content(url)}");
+    }
+    private IUserLoginStore<ApplicationUser> GetLogins()
+    {
+        return (IUserLoginStore<ApplicationUser>)_userStore;
     }
 }
