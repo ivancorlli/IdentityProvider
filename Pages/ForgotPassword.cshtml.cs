@@ -13,46 +13,73 @@ namespace IdentityProvider.Pages
 	{
 		private readonly UserManager<ApplicationUser> _userManager;
 		private readonly IEmailSender _emailSender;
+
+		[BindProperty]
 		public ModelRecovery Recovery { get; set; } = new ModelRecovery();
+		public string ReturnUrl { get; set; } = string.Empty;
 
 		public RecoveryModel(UserManager<ApplicationUser> userManager, IEmailSender emailSender)
 		{
 			_userManager = userManager;
 			_emailSender = emailSender;
 		}
-		public async Task<IActionResult> OnPostAsync()
+
+		public IActionResult? OnGet(string returnUrl)
 		{
+			if(returnUrl == null)
+			{
+				return Redirect("/Signin");
+			}else
+			{
+				ReturnUrl = returnUrl;
+				return null;
+			}
+
+		}
+
+
+		public async Task<IActionResult> OnPostAsync(string returnUrl)
+		{
+
+			ReturnUrl = returnUrl;
+
 			if (ModelState.IsValid)
 			{
 				var user = await _userManager.FindByEmailAsync(Recovery.Email);
 				if (user == null || !await _userManager.IsEmailConfirmedAsync(user))
 				{
-					// Don't reveal that the user does not exist or is not confirmed
-					return RedirectToPage("ForgotPasswordConfirmation");
+					return RedirectToPage("/ForgotPasswordConfirmation", new {ReturnUrl});
 				}
 
+				if(user.PasswordHash == null) 
+				{
+					return RedirectToPage("/Signin",new {ReturnUrl});
+				}
+			
 				var code = await _userManager.GeneratePasswordResetTokenAsync(user);
 				code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
+				var Exp = DateTimeOffset.UtcNow.AddMinutes(15).ToUnixTimeSeconds();
 				var callbackUrl = Url.Page(
 					"/ResetPassword",
 					pageHandler: null,
-					values: new { area = "Identity", code },
+					values: new { 
+						UE = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(user.Id.ToString())), 
+						Code=code,
+						Exp = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(Exp.ToString())),
+						ReturnUrl
+					},
 					protocol: Request.Scheme)!;
 
-				//await _emailSender.SendEmailAsync(
-				//    Input.Email,
-				//    "Reset Password",
-				//    $"Please reset your password by <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>clicking here</a>.");
-
-				return RedirectToPage("/ForgotPasswordConfirmation");
+				await _emailSender.SendResetPassword(user.Email!,callbackUrl);
+				return RedirectToPage("/ForgotPasswordConfirmation", new { ReturnUrl });
 			}
 
 			return Page();
 		}
 
-		public IActionResult OnPostToSignUp()
+		public IActionResult OnPostToSignUp(string url)
 		{
-			return Redirect("/signin");
+			return RedirectToPage("/Signin", new {ReturnUrl = url});
 		}
 
 	}

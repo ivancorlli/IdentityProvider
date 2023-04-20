@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.WebUtilities;
 using IdentityProvider.Interface;
 using System.Text;
-using System.Text.Encodings.Web;
 using Microsoft.Extensions.Options;
 using IdentityProvider.Options;
 
@@ -34,81 +33,48 @@ namespace IdentityProvider.Pages
 			_defaultReturnUrl = returnUrl;
         }
 
-        public void OnGet(string returnUrl)
+        public IActionResult? OnGet(string returnUrl)
         {
-            var url = HttpContext.Request.QueryString.Value!;
-            if (url.Contains("?ReturnUrl="))
-            {
-                var split = url.Split("?ReturnUrl=");
-                ReturnUrl = split[1];
-            }
-            else if (url.Contains("?returnUrl="))
-            {
-                var split = url.Split("?returnUrl=");
-                ReturnUrl = split[1];
-            }
-            else if (url.Contains("?returnurl="))
-            {
-                var split = url.Split("?returnurl=");
-                ReturnUrl = split[1];
+            if( returnUrl == null) {
+                return Redirect("/Signin");
             }
             else
             {
                 ReturnUrl = returnUrl;
+                return null;
             }
-
-        }
+		}
 
         public async Task<IActionResult> OnPostAsync(string returnUrl)
         {
+			ReturnUrl = returnUrl;
+            
             if (ModelState.IsValid)
             {
-                var url = HttpContext.Request.QueryString.Value!;
-                if (url.Contains("?ReturnUrl="))
-                {
-                    var split = url.Split("?ReturnUrl=");
-                    ReturnUrl = split[1];
-                }
-                else if (url.Contains("?returnUrl="))
-                {
-                    var split = url.Split("?returnUrl=");
-                    ReturnUrl = split[1];
-                }
-                else if (url.Contains("?returnurl="))
-                {
-                    var split = url.Split("?returnurl=");
-                    ReturnUrl = split[1];
-                }
-                else
-                {
-                    ReturnUrl = returnUrl;
-                }
-
-                var user = new ApplicationUser { Email = Register.Email.Trim(), UserName = Register.Email.ToLower().Trim() };
+				var user = new ApplicationUser { Email = Register.Email.Trim(), UserName = Register.Email.ToLower().Trim() };
                 var result = await _userManager.CreateAsync(user, Register.Password);
                 if (result.Succeeded)
                 {
-                    var userId = await _userManager.GetUserIdAsync(user);
-                    var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-                    code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
-                    var exp = DateTimeOffset.UtcNow.AddMinutes(5).ToUnixTimeSeconds();
+                    var UserId = await _userManager.GetUserIdAsync(user);
+                    var Code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+                    Code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(Code));
+                    var Exp = DateTimeOffset.UtcNow.AddMinutes(5).ToUnixTimeSeconds();
                     var callback = Url.Page(
                         pageName: "/ConfirmEmail",
                         pageHandler: null,
                         values: new
                         {
-                            userId,
-                            code,
-							returnUrl = _defaultReturnUrl.Value.Default,
-                            exp = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(exp.ToString())),
+                            UserId,
+                            Code,
+							ReturnUrl = returnUrl,
+                            Exp = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(Exp.ToString())),
                         },
                         protocol: Request.Scheme
                         );
-                    // Send Email
-                    // await _emailSender.SendWelcome(user.Email.ToString());
+                    await _emailSender.SendWelcome(user.Email.ToString());
                     await _emailSender.SendConfirmationEmail(user.Email.ToString(), callback!); ;
                     ModelState.Clear();
-                    return RedirectToPage("/SignupConfirmation", new { email = user.Email, ReturnUrl });
+                    return RedirectToPage("/SignupConfirmation", new { Email = user.Email.ToString(), ReturnUrl });
                 }
                 else
                 {
@@ -137,7 +103,7 @@ namespace IdentityProvider.Pages
 
         public IActionResult OnPostToSignIn(string url)
         {
-            return Redirect($"/signin?ReturnUrl={url}");
+            return RedirectToPage("/Signin", new {ReturnUrl = url});
         }
     }
 }

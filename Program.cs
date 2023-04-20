@@ -48,7 +48,7 @@ Services.AddIdentity<ApplicationUser, IdentityRole>(o =>
 
 Services.ConfigureApplicationCookie(opts =>
 {
-    opts.Cookie.Name = "OAuthServer";
+    opts.Cookie.Name = "SIP";
     opts.LoginPath = "/signin";
 });
 
@@ -62,12 +62,14 @@ Services.AddAuthentication()
             opts.SignInScheme = IdentityConstants.ExternalScheme;
         })
     .AddFacebook(opts =>
-    {
-        opts.ClientId = builder.Configuration["Authentication:Facebook:ClientId"]!;
-        opts.ClientSecret = builder.Configuration["Authentication:Facebook:Secret"]!;
-        opts.SignInScheme = IdentityConstants.ExternalScheme;
-    });
+        {
+            opts.ClientId = builder.Configuration["Authentication:Facebook:ClientId"]!;
+            opts.ClientSecret = builder.Configuration["Authentication:Facebook:Secret"]!;
+            opts.SignInScheme = IdentityConstants.ExternalScheme;
+        });
 
+
+Services.ConfigureExternalCookie(x => x.Cookie.Name = "EIP");
 Services.Configure<CookiePolicyOptions>(options =>
 {
     options.MinimumSameSitePolicy = SameSiteMode.Unspecified;
@@ -81,12 +83,13 @@ Services.Configure<CookiePolicyOptions>(options =>
             cookieContext.CookieOptions.SameSite = SameSiteMode.Unspecified;
     };
 });
-
+Services.AddAntiforgery(options => {
+    options.Cookie.Name = "AIP";
+});
 
 
 // Auth Schema
 Services.AddAuthorization();
-
 
 var app = builder.Build();
 

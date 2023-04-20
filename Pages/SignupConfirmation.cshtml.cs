@@ -17,9 +17,16 @@ namespace IdentityProvider.Pages
 
 		public async Task<IActionResult> OnGet(string email,string returnUrl)
 		{
+			if(string.IsNullOrEmpty(returnUrl)) {
+				return Redirect("/Signin");
+			}else
+			{
+				ReturnUrl = returnUrl;
+			}
+
 			if (email == null)
 			{
-				return RedirectToPage("/signin");
+				return RedirectToPage("/Signin",new { ReturnUrl});
 			}
 			var user = await _userManager.FindByEmailAsync(email);
 			if (user == null)
@@ -28,12 +35,11 @@ namespace IdentityProvider.Pages
 			}
 
 			Email = email;
-			ReturnUrl = returnUrl;
 			return Page();
 		}
 		public IActionResult OnPostToSignIn(string url)
 		{
-			return Redirect($"/signin?ReturnUrl={url}");
+			return RedirectToPage("/Signin",new { ReturnUrl = url });
 		}
 	}
 }

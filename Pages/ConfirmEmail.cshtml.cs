@@ -32,19 +32,21 @@ public class ConfirmEmailModel : PageModel
 			string.IsNullOrEmpty(exp) 
 			)
 		{
-			return RedirectToPage("/signin");
+			return RedirectToPage("/Signin");
+		}else
+		{
+			ReturnUrl = returnUrl;
 		}
 
 		var user = await _userManager.FindByIdAsync(userId);
 		if (user == null)
 		{
-			return NotFound($"No encontramos al usuario");
+			return RedirectToPage("/Signin", new {ReturnUrl});
 		}
 
-		ReturnUrl = returnUrl;
 		UserId = user.Id;
 		if (user.EmailConfirmed) {
-			return RedirectToPage($"/signin?ReturnUrl={ReturnUrl}");
+			return RedirectToPage($"/Signin",new { ReturnUrl });
 		}
 
 		exp = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(exp));
@@ -69,7 +71,7 @@ public class ConfirmEmailModel : PageModel
 
 	public IActionResult OnPostToSignIn(string url)
 	{
-			return Redirect($"/signin?ReturnUrl={url}");
+			return RedirectToPage($"/Signin",new { ReturnUrl = url});
 	}
 
 	public async Task<IActionResult> OnPostToResend(string url,string id)
@@ -77,26 +79,26 @@ public class ConfirmEmailModel : PageModel
 		var user = await _userManager.FindByIdAsync(id);
 		if(user!=null)
 		{
-			var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-			code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
-			var exp = DateTimeOffset.UtcNow.AddMinutes(5).ToUnixTimeSeconds();
+			var Code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+			Code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(Code));
+			var Exp = DateTimeOffset.UtcNow.AddMinutes(5).ToUnixTimeSeconds();
 			var callback = Url.Page(
 				pageName: "/ConfirmEmail",
 				pageHandler: null,
 				values: new
 				{
-					userId=user.Id,
-					code,
-					returnUrl=url,
-					exp = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(exp.ToString())),
+					UserId=user.Id,
+					Code,
+					ReturnUrl=url,
+					Exp = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(Exp.ToString())),
 				},
 				protocol: Request.Scheme
 				);
 			await _emailSender.SendConfirmationEmail(user.Email!.ToString(), callback!);
-			return RedirectToPage("/SignupConfirmation", new { email = user.Email.ToLower(),ReturnUrl=url });
+			return RedirectToPage("/SignupConfirmation", new { email = user.Email.ToString(),ReturnUrl=url });
 		}else
 		{
-			return RedirectToPage("/signin");
+			return RedirectToPage("/Signin");
 		}
 	}
 }

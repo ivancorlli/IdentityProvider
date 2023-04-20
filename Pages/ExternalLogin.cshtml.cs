@@ -41,17 +41,20 @@ public class ExternalLogin : PageModel
 
     public IActionResult OnGet() => RedirectToPage("/Signin");
 
-    public IActionResult OnPost(string provider, string? returnUrl = null)
+    public IActionResult OnPost(string provider, string returnUrl)
     {
-        // Request a redirect to the external login provider.
-        var redirectUrl = Url.Page("/ExternalLogin", pageHandler: "Callback", values: new { returnUrl });
+        if(string.IsNullOrEmpty(returnUrl) || string.IsNullOrEmpty(provider)) 
+            return Redirect("/Signin");
+
+        ReturnUrl = returnUrl;
+        var redirectUrl = Url.Page("/ExternalLogin", pageHandler: "Callback", values: new { ReturnUrl});
         var properties = _signInManager.ConfigureExternalAuthenticationProperties(provider, redirectUrl);
         return new ChallengeResult(provider, properties);
     }
 
     public async Task<IActionResult> OnGetCallbackAsync(string? returnUrl = null, string? remoteError = null)
     {
-        returnUrl = returnUrl ?? Url.Content(_defaultReturn.Value.Default);
+        ReturnUrl = returnUrl ?? _defaultReturn.Value.Default;
         if (remoteError != null)
         {
             Error = $"Error del provedor: {remoteError}";
@@ -68,7 +71,7 @@ public class ExternalLogin : PageModel
         var result = await _signInManager.ExternalLoginSignInAsync(info.LoginProvider, info.ProviderKey, isPersistent: false, bypassTwoFactor: true);
         if (result.Succeeded)
         {
-            return Redirect(returnUrl);
+            return Redirect(ReturnUrl);
         }
         else if (result.IsNotAllowed)
         {
@@ -82,8 +85,6 @@ public class ExternalLogin : PageModel
         }
         else
         {
-            // Creamos una cuenta al usuario
-            ReturnUrl = returnUrl;
             var email = info.Principal.FindFirstValue(ClaimTypes.Email);
             // Si tiene email, continuamos
             if (email != null)
@@ -144,20 +145,20 @@ public class ExternalLogin : PageModel
                             pageHandler: null,
                             values: new
                             {
-                                userId,
-                                code,
-                                returnUrl = _defaultReturn.Value.Default,
-                                exp = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(exp.ToString())),
+                                UserId=userId,
+                                Code=code,
+                                ReturnUrl = returnUrl,
+                                Exp = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(exp.ToString())),
                             },
                             protocol: Request.Scheme
                             );
-                        // Send Email
-                        // await _emailSender.SendWelcome(user.Email.ToString());
+                        await _emailSender.SendWelcome(user.Email!.ToString());
                         await _emailSender.SendConfirmationEmail(user.Email!.ToString(), callback!);
-                        return RedirectToPage("/SignupConfirmation", new { email = user.Email, returnUrl });
+                        return RedirectToPage("/SignupConfirmation", new { email = user.Email, ReturnUrl = returnUrl});
                     }
                     else
                     {
+                        // Errores al agreagar proveedor
                         foreach (var error in result.Errors)
                         {
                             Error = error.Description;
@@ -181,21 +182,25 @@ public class ExternalLogin : PageModel
             {
                 // Si el usuario ya ha sido registrado
 
-                // Le agregamos el proveedor
+                // Buscamos los proveedores
                 var providers = await _userLogin.GetLoginsAsync(user, CancellationToken.None);
                 var exists = providers.Where(x => x.LoginProvider == info.LoginProvider).ToList();
                 if (exists.Count > 0)
                 {
-                    Error = "Tu cuenta ya ha registrada";
+                    Error = $"Tu cuenta ya ha sido registrada con {exists.First().ProviderDisplayName}";
+                    AllowBack = true ;
                     return Page();
                 }
                 else
                 {
+                    // Agreagamos el login
                     var result = await _userManager.AddLoginAsync(user, info);
                     if (result.Succeeded)
                     {
+                        // Si el email esta confirmado
                         if (user.EmailConfirmed)
                         {
+                            // Inciamos sesion
                             var login = await _signInManager.ExternalLoginSignInAsync(info.LoginProvider, info.ProviderKey, isPersistent: false, bypassTwoFactor: true);
                             if (login.Succeeded)
                             {
@@ -209,7 +214,7 @@ public class ExternalLogin : PageModel
                             }
                             else if (login.IsLockedOut)
                             {
-                                return RedirectToPage("./Lockout");
+                                return RedirectToPage("/Lockout");
                             }
                             else
                             {
@@ -219,6 +224,7 @@ public class ExternalLogin : PageModel
                         }
                         else
                         {
+                            // Si el email no esta confirmado, le enviamos una solicitud de verificacion
                             var userId = await _userManager.GetUserIdAsync(user);
                             var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
                             code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
@@ -228,17 +234,15 @@ public class ExternalLogin : PageModel
                                 pageHandler: null,
                                 values: new
                                 {
-                                    userId,
-                                    code,
-                                    returnUrl = _defaultReturn.Value.Default,
-                                    exp = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(exp.ToString())),
+                                    UserId = userId,
+                                    Code=code,
+                                    ReturnUrl = returnUrl,
+                                    Exp = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(exp.ToString())),
                                 },
                                 protocol: Request.Scheme
                                 );
-                            // Send Email
-                            // await _emailSender.SendWelcome(user.Email.ToString());
                             await _emailSender.SendConfirmationEmail(user.Email!.ToString(), callback!);
-                            return RedirectToPage("/SignupConfirmation", new { email = user.Email, returnUrl });
+                            return RedirectToPage("/SignupConfirmation", new { email = user.Email, ReturnUrl=returnUrl });
                         }
                     }
                     else
@@ -258,8 +262,7 @@ public class ExternalLogin : PageModel
     }
     public IActionResult OnPostToSignIn(string url)
     {
-        
-        return Redirect($"/signin?ReturnUrl={Url.Content(url)}");
+        return RedirectToPage("/Signin", new {ReturnUrl = url });
     }
     private IUserLoginStore<ApplicationUser> GetLogins()
     {

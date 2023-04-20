@@ -29,8 +29,17 @@ public class EmailSender : IEmailSender
 		return Task.CompletedTask;
 	}
 
+	public Task SendResetPassword(string Email, string Link)
+	{
+		_client.Send("noreplay@muver.com", Email, "Reset ", $"Please confirm your account by <a href='{Link}'>clicking here</a>.");
+
+		return Task.CompletedTask;
+	}
+
 	public Task SendWelcome(string Email)
 	{
-		throw new NotImplementedException();
+		_client.Send("noreplay@muver.com", Email, "Welcoming", "Bienvenido");
+
+		return Task.CompletedTask;
 	}
 }
