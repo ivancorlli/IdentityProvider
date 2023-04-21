@@ -48,11 +48,12 @@ namespace IdentityProvider.Pages
 				ReturnUrl = returnUrl;
 			}
 
-			if (HttpContext.User.Identity != null)
-				if (HttpContext.User.Identity.IsAuthenticated)
-				{
-					return Redirect(ReturnUrl);
-				}
+			var auth = await HttpContext.AuthenticateAsync(IdentityConstants.ApplicationScheme);
+			if (auth.Succeeded)
+			{
+				return new RedirectResult(ReturnUrl);
+
+			}
 
 			await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
 			var list = await _signIn.GetExternalAuthenticationSchemesAsync();

@@ -5,10 +5,12 @@ using IdentityProvider.Helper;
 using IdentityProvider.Interface;
 using IdentityProvider.Options;
 using IdentityProvider.Repo;
+using IdentityProvider.Seed;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Pomelo.EntityFrameworkCore.MySql.Infrastructure;
+using static OpenIddict.Abstractions.OpenIddictConstants;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -38,6 +40,7 @@ Services.AddDbContext<ApplicationDbContext>(o =>
         ServerVersion.Create(new Version(10, 7, 8), ServerType.MariaDb),
         x => x.EnableRetryOnFailure()
         );
+    o.UseOpenIddict();
 });
 
 // identity
@@ -74,8 +77,9 @@ Services.AddAuthentication()
             opts.SignInScheme = IdentityConstants.ExternalScheme;
         });
 
-
 Services.ConfigureExternalCookie(x => x.Cookie.Name = "EIP");
+
+// Configure Cookies
 Services.Configure<CookiePolicyOptions>(options =>
 {
     options.MinimumSameSitePolicy = SameSiteMode.Unspecified;
@@ -93,9 +97,49 @@ Services.AddAntiforgery(options => {
     options.Cookie.Name = "AIP";
 });
 
-
 // Auth Schema
 Services.AddAuthorization();
+
+//Configure OpenIddict
+Services.AddOpenIddict(x =>
+{
+    // Config core
+    x.AddCore(opts=>opts.UseEntityFrameworkCore().UseDbContext<ApplicationDbContext>());
+    // Config server
+    x.AddServer(opts =>
+    {
+        opts.SetAuthorizationEndpointUris("/connect/authorize").SetTokenEndpointUris("/connect/token");
+        opts.AllowClientCredentialsFlow().AllowAuthorizationCodeFlow().RequireProofKeyForCodeExchange();
+
+        // Encryption and Signin of tokens 
+        opts.AddEphemeralEncryptionKey();
+        opts.AddEphemeralSigningKey();
+
+        opts.SetIssuer(new Uri("https://localhost:5005"));
+
+        // Scopes
+        opts.RegisterScopes(Scopes.Email, Scopes.Profile, Scopes.Roles, "Api");
+
+        opts.UseAspNetCore()
+            .EnableTokenEndpointPassthrough()
+            .EnableAuthorizationEndpointPassthrough()
+            .EnableStatusCodePagesIntegration();
+	})
+    .AddValidation(options =>
+    {
+        options.UseLocalServer();
+
+        options.UseAspNetCore();
+    });
+});
+
+// Only for Development Configurations
+if(builder.Environment.EnvironmentName == "Development")
+{
+    Services.AddHostedService<TestData>();
+}
+
+
 
 var app = builder.Build();
 
@@ -107,8 +151,9 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapGet("/auth/authorize", Authorize.Handle).RequireAuthorization();
-app.MapPost("/auth/token", Token.Handle);
+app.MapGet("~/connect/authorize", Authorize.HandleAsync).RequireAuthorization();
+app.MapPost("~/connect/authorize", Authorize.HandleAsync).RequireAuthorization();
+app.MapPost("~/connect/token", Token.Exchange);
 
 app.MapRazorPages();
 

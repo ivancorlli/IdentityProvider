@@ -1,102 +1,68 @@
-﻿using IdentityProvider.Helper;
+﻿using System.Security.Claims;
+using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.DataProtection;
-using Microsoft.IdentityModel.JsonWebTokens;
-using Microsoft.IdentityModel.Tokens;
-using System.Security.Cryptography;
-using System.Text;
-using System.Text.Json;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using OpenIddict.Abstractions;
+using OpenIddict.Server.AspNetCore;
 
 namespace IdentityProvider.Endpoints.OAuth;
 
-public static class Token
+public class Token
 {
-	public static async Task<IResult> Handle(HttpRequest req, DevKeys keys, IDataProtectionProvider data)
-	{
-		var bodyBytes = await req.BodyReader.ReadAsync();
-		var bodyContent = Encoding.UTF8.GetString(bodyBytes.Buffer);
-		string grantTypes = "", code = "", redirectUri = "", codeVerifier = "";
-		foreach (var part in bodyContent.Split("&"))
-		{
-			var subParts = part.Split("=");
-			var key = subParts[0];
-			var value = subParts[1];
-			if (key == "grant_type") grantTypes = value;
-			else if (key == "code") code = value;
-			else if (key == "redirect_uri") redirectUri = value;
-			else if (key == "code_verifier") codeVerifier = value;
-		}
+    [Consumes("application/x-www-form-urlencoded")]
+    [Produces("application/json")]
+    public static async Task<IResult> Exchange(HttpContext context)
+    {
+        OpenIddictRequest OpenId = context.GetOpenIddictServerRequest() ?? throw new InvalidOperationException("Se produjo un erro al obtener el token");
+        ClaimsPrincipal claimsPrincipal;
+        if (OpenId.IsClientCredentialsGrantType())
+        {
+            // Note: the client credentials are automatically validated by OpenIddict:
+            // if client_id or client_secret are invalid, this action won't be invoked.
 
+            ClaimsIdentity identity = new ClaimsIdentity(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
 
-		if (grantTypes == "client_credentials")
-		{
-			var accessToken = JsonHandler(keys);
-			return Results.Ok(
-				new
-				{
-					access_token = accessToken,
-				}
-				);
-		}
+            // Subject (sub) is a required field, we use the client id as the subject identifier here.
+            identity.AddClaim(OpenIddictConstants.Claims.Subject, OpenId.ClientId ?? throw new InvalidOperationException("Se produjo un error al obtener client ID"));
 
+            // Add some claim, don't forget to add destination otherwise it won't be added to the access token.
+            identity.AddClaim("some-claim", "some-value", OpenIddictConstants.Destinations.AccessToken);
 
+            claimsPrincipal = new ClaimsPrincipal(identity);
 
-		var authCode = CodeHandler(data, code);
-		if (authCode != null)
-		{
-			if (ValidateCode(authCode, codeVerifier))
-			{
-				var accessToken = JsonHandler(keys);
-				return Results.Ok(
-					new
-					{
-						access_token = accessToken,
-					}
-					);
+            claimsPrincipal.SetScopes(OpenId.GetScopes());
+        }
+        else if (OpenId.IsAuthorizationCodeGrantType())
+        {
+            AuthenticateResult auth = await context.AuthenticateAsync(IdentityConstants.ApplicationScheme);
+            if (auth.Succeeded)
+            {
+                claimsPrincipal = auth.Principal;
+            }
+            else
+            {
+                IList<string> schemes = new List<string>(){
+                IdentityConstants.ApplicationScheme
+                };
+                HttpRequest Request = context.Request;
+                string redirectUri = Request.PathBase + Request.Path + QueryString.Create(
+                        Request.HasFormContentType ? Request.Form.ToList() : Request.Query.ToList());
+                return Results.Challenge(
+                    authenticationSchemes: schemes,
+                    properties: new AuthenticationProperties
+                    {
+                        RedirectUri =redirectUri
+                    });
+            }
+        }
+        else
+        {
+            throw new InvalidOperationException("El grant_type no es soportado.");
+        }
 
-			}
-			else
-			{
-				return Results.BadRequest("Error in code verifier");
-			}
+        // Returning a SignInResult will ask OpenIddict to issue the appropriate access/identity tokens.
+        return Results.SignIn(claimsPrincipal, null, OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
+    }
 
-		}
-		else
-		{
-			return Results.BadRequest("Error in authcode");
-		}
-
-	}
-
-	private static string JsonHandler(DevKeys keys)
-	{
-		var handler = new JsonWebTokenHandler();
-		var descriptor = new SecurityTokenDescriptor()
-		{
-			Claims = new Dictionary<string, object>()
-			{
-				[JwtRegisteredClaimNames.Sub] = Guid.NewGuid().ToString(),
-				["Usuario"] = "RandomUser"
-			},
-			Expires = DateTime.UtcNow.AddMinutes(20),
-			TokenType = "Bearer",
-			SigningCredentials = new SigningCredentials(keys.RsaSecurityKey, SecurityAlgorithms.RsaSha256)
-		};
-		var accesToken = handler.CreateToken(descriptor);
-		return accesToken;
-	}
-
-	private static AuthCode? CodeHandler(IDataProtectionProvider dataProvider, string code)
-	{
-		var protector = dataProvider.CreateProtector("oauth");
-		var codeString = protector.Unprotect(code);
-		var auth = JsonSerializer.Deserialize<AuthCode>(codeString);
-		return auth;
-	}
-
-	private static bool ValidateCode(AuthCode code, string codeVerifier)
-	{
-		var codeChallenge = Base64UrlTextEncoder.Encode(SHA256.HashData(Encoding.ASCII.GetBytes(codeVerifier)));
-		return codeChallenge == code.CodeChallenge;
-	}
 }
