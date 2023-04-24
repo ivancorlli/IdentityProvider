@@ -1,12 +1,11 @@
 using IdentityProvider.Entity;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace IdentityProvider.Context
 {
 	public class ApplicationDbContext :
-		IdentityDbContext<ApplicationUser, IdentityRole, string>
+		IdentityDbContext<ApplicationUser, ApplicationRole, string>
 	{
 		public ApplicationDbContext(DbContextOptions options) : base(options)
 		{

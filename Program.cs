@@ -42,7 +42,7 @@ Services.AddDbContext<ApplicationDbContext>(o =>
 });
 
 // identity
-Services.AddIdentity<ApplicationUser, IdentityRole>(o =>
+Services.AddIdentity<ApplicationUser, ApplicationRole>(o =>
 {
     o.SignIn.RequireConfirmedAccount = true;
 
@@ -159,7 +159,7 @@ Services.AddOpenIddict(x =>
 // Only for Development Configurations
 if (builder.Environment.EnvironmentName == "Development")
 {
-    Services.AddHostedService<TestData>();
+    Services.AddHostedService<DemoData>();
 }
 
 

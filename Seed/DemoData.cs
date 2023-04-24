@@ -4,11 +4,11 @@ using OpenIddict.Abstractions;
 namespace IdentityProvider.Seed;
 
 
-public class TestData : IHostedService
+public class DemoData : IHostedService
 {
     private readonly IServiceProvider _serviceProvider;
 
-    public TestData(IServiceProvider serviceProvider)
+    public DemoData(IServiceProvider serviceProvider)
     {
         _serviceProvider = serviceProvider;
     }
