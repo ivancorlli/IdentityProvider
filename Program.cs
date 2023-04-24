@@ -48,15 +48,28 @@ Services.AddIdentity<ApplicationUser, IdentityRole>(o =>
 
     o.User.RequireUniqueEmail = true;
     o.Password.RequireNonAlphanumeric = false;
+    o.ClaimsIdentity.RoleClaimType = "Application-Default-User";
+    o.ClaimsIdentity.SecurityStampClaimType = TimeSpan.TicksPerSecond.ToString(); 
 
 })
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
 
 Services.ConfigureApplicationCookie(opts =>
-{
-    opts.Cookie.Name = "SIP";
+{   
+    // paths
     opts.LoginPath = "/signin";
+    opts.AccessDeniedPath = "";
+    opts.ReturnUrlParameter = builder.Configuration["ReturnUrl:Default"]!.ToString();
+    opts.SlidingExpiration =true;
+    opts.ClaimsIssuer= "https://localhost:5005";
+    // Cookie config
+    opts.Cookie.Name = "SIP";
+    opts.Cookie.SameSite = SameSiteMode.Strict;
+    opts.Cookie.HttpOnly = true;
+    opts.Cookie.IsEssential =true;
+    // Validate options
+    opts.Validate();
 });
 
 // External Authentications

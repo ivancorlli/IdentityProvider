@@ -59,29 +59,20 @@ namespace AuthorizationServer.Controllers
         public async Task<IActionResult> Exchange()
         {
             var request = HttpContext.GetOpenIddictServerRequest() ??
-                          throw new InvalidOperationException("Se produjo un error en el servidor Open ID.");
-
+            throw new InvalidOperationException("Se produjo un error en el servidor Open ID.");
             ClaimsPrincipal claimsPrincipal;
-
             if (request.IsClientCredentialsGrantType())
             {
                 // Note: the client credentials are automatically validated by OpenIddict:
                 // if client_id or client_secret are invalid, this action won't be invoked.
-
                 var identity = new ClaimsIdentity(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
-
                 // Subject claim es client id, este claim es obligatorio
                 identity.AddClaim(OpenIddictConstants.Claims.Subject, request.ClientId ?? throw new InvalidOperationException());
-
                 // Aniadimos los claims y el destino (osea el token al que se pegan)
-                identity.AddClaim("some-claim", "some-value", OpenIddictConstants.Destinations.AccessToken);
-
                 claimsPrincipal = new ClaimsPrincipal(identity);
-
                 // Cargamos los scopes del cliente
                 claimsPrincipal.SetScopes(request.GetScopes());
             }
-
             else if (request.IsAuthorizationCodeGrantType())
             {
                 // Obtenemos todos los claims de las cookies
@@ -96,7 +87,7 @@ namespace AuthorizationServer.Controllers
 
             else
             {
-                throw new InvalidOperationException("The specified grant type is not supported.");
+                throw new InvalidOperationException("Grant Type no soportado.");
             }
 
             // iniciamos sesion y openiddict geestiona automaticamente los tokens

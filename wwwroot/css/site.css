@@ -26,11 +26,60 @@ body {
   font-size: 0.75rem;
 }
 
+.gray {
+  color: gray;
+}
+
 .border-gray {
   border-color: gray;
 }
 
 .facebook {
-  background-color: #405A93;
+  background-color: #3b5998;
+  border: thin solid #3b5998;
+  box-shadow: 1px 1px 1px grey;
+  white-space: nowrap;
   color: white;
+  
+}
+.facebook:hover {
+  cursor: pointer;
+  background-color: #3b5998;
+  border: thin solid #3b5998;
+  box-shadow: 1px 1px 1px grey;
+  white-space: nowrap;
+  color: white;
+}
+
+
+.google {
+  background: white;
+  color: #444;
+  border: thin solid #888;
+  box-shadow: 1px 1px 1px grey;
+  white-space: nowrap;
+}
+.google:hover {
+  cursor: pointer;
+  background: white;
+  color: #444;
+  border: thin solid #888;
+  box-shadow: 1px 1px 1px grey;
+  white-space: nowrap;
+}
+
+.custom-btn {
+  background: white;
+  color: #444;
+  border: thin solid #888;
+  box-shadow: 1px 1px 1px grey;
+  white-space: nowrap;
+}
+.custom-btn:hover {
+  cursor: pointer;
+  background: white;
+  color: #444;
+  border: thin solid #888;
+  box-shadow: 1px 1px 1px grey;
+  white-space: nowrap;
 }

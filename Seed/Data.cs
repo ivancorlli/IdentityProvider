@@ -1,7 +1,5 @@
-
 using IdentityProvider.Context;
 using OpenIddict.Abstractions;
-using static OpenIddict.Abstractions.OpenIddictConstants;
 
 namespace IdentityProvider.Seed;
 

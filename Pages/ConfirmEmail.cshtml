@@ -30,13 +30,13 @@
 			}
 			<div class="d-flex w-100 justify-content-between">
 				<form class="" method="post" asp-page-handler="ToSignIn" asp-route-url="@Model.ReturnUrl">
-					<button class="btn btn-outline-secondary rounded-pill" type="submit">Iniciar Sesion</button>
+					<button class="btn btn-outline-secondary custom-btn fw-normal rounded-pill" type="submit">Iniciar Sesion</button>
 				</form>
 				@{
 					if (Model.Resend)
 					{
 						<form class="" method="post" asp-page-handler="ToResend" asp-route-url="@Model.ReturnUrl" asp-route-id="@Model.UserId">
-							<button class="btn btn-outline-secondary rounded-pill" type="submit">Solicitar verificacion</button>
+							<button class="btn btn-outline-warning fw-normal rounded-pill" type="submit">Solicitar verificacion</button>
 						</form>
 					}
 				}
