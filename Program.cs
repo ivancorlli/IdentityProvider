@@ -1,5 +1,4 @@
 using IdentityProvider.Context;
-using IdentityProvider.Endpoints.OAuth;
 using IdentityProvider.Entity;
 using IdentityProvider.Helper;
 using IdentityProvider.Interface;
@@ -10,7 +9,6 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Pomelo.EntityFrameworkCore.MySql.Infrastructure;
-using static OpenIddict.Abstractions.OpenIddictConstants;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -83,7 +81,8 @@ Services.ConfigureExternalCookie(x => x.Cookie.Name = "EIP");
 Services.Configure<CookiePolicyOptions>(options =>
 {
     options.MinimumSameSitePolicy = SameSiteMode.Unspecified;
-    options.OnAppendCookie = cookieContext => {
+    options.OnAppendCookie = cookieContext =>
+    {
         if (cookieContext.CookieOptions.SameSite == SameSiteMode.None)
             cookieContext.CookieOptions.SameSite = SameSiteMode.Unspecified;
     };
@@ -93,7 +92,8 @@ Services.Configure<CookiePolicyOptions>(options =>
             cookieContext.CookieOptions.SameSite = SameSiteMode.Unspecified;
     };
 });
-Services.AddAntiforgery(options => {
+Services.AddAntiforgery(options =>
+{
     options.Cookie.Name = "AIP";
 });
 
@@ -104,37 +104,47 @@ Services.AddAuthorization();
 Services.AddOpenIddict(x =>
 {
     // Config core
-    x.AddCore(opts=>opts.UseEntityFrameworkCore().UseDbContext<ApplicationDbContext>());
-    // Config server
-    x.AddServer(opts =>
+    x.AddCore(opts => opts.UseEntityFrameworkCore().UseDbContext<ApplicationDbContext>());
+    x.AddServer(options =>
     {
-        opts.SetAuthorizationEndpointUris("/connect/authorize").SetTokenEndpointUris("/connect/token");
-        opts.AllowClientCredentialsFlow().AllowAuthorizationCodeFlow().RequireProofKeyForCodeExchange();
+        options.AllowClientCredentialsFlow();
+        options.AllowAuthorizationCodeFlow().RequireProofKeyForCodeExchange();
 
-        // Encryption and Signin of tokens 
-        opts.AddEphemeralEncryptionKey();
-        opts.AddEphemeralSigningKey();
+        options
+            .SetAuthorizationEndpointUris("/connect/authorize")
+            .SetTokenEndpointUris("/connect/token");
 
-        opts.SetIssuer(new Uri("https://localhost:5005"));
+            // Encryption and signing of tokens
+        options
+            .AddEphemeralEncryptionKey()
+            .AddEphemeralSigningKey();
 
-        // Scopes
-        opts.RegisterScopes(Scopes.Email, Scopes.Profile, Scopes.Roles, "Api");
+            // Register scopes (permissions)
+        options.RegisterScopes("api");
 
-        opts.UseAspNetCore()
+            // Register the ASP.NET Core host and configure the ASP.NET Core-specific options.
+        options
+            .UseAspNetCore()
             .EnableTokenEndpointPassthrough()
-            .EnableAuthorizationEndpointPassthrough()
-            .EnableStatusCodePagesIntegration();
-	})
-    .AddValidation(options =>
-    {
-        options.UseLocalServer();
-
-        options.UseAspNetCore();
+            .EnableAuthorizationEndpointPassthrough();
+            
+            // Certificates
+        options.AddDevelopmentEncryptionCertificate()
+               .AddDevelopmentSigningCertificate();
+            // Issuer
+        options.SetIssuer(new Uri("https://localhost:5005"));
     });
+    x.AddClient(options=>{
+        options.UseSystemNetHttp();
+    });
+    x.AddValidation(options=>{
+        options.UseSystemNetHttp();
+    });
+
 });
 
 // Only for Development Configurations
-if(builder.Environment.EnvironmentName == "Development")
+if (builder.Environment.EnvironmentName == "Development")
 {
     Services.AddHostedService<TestData>();
 }
@@ -151,9 +161,7 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapGet("~/connect/authorize", Authorize.HandleAsync).RequireAuthorization();
-app.MapPost("~/connect/authorize", Authorize.HandleAsync).RequireAuthorization();
-app.MapPost("~/connect/token", Token.Exchange);
+app.MapDefaultControllerRoute();
 
 app.MapRazorPages();
 

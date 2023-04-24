@@ -4,6 +4,8 @@ using OpenIddict.Abstractions;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
 namespace IdentityProvider.Seed;
+
+
 public class TestData : IHostedService
 {
     private readonly IServiceProvider _serviceProvider;
@@ -22,53 +24,49 @@ public class TestData : IHostedService
 
         var manager = scope.ServiceProvider.GetRequiredService<IOpenIddictApplicationManager>();
 
-        if (await manager.FindByClientIdAsync("Thunder", cancellationToken) is null)
+        if (await manager.FindByClientIdAsync("thunder", cancellationToken) is null)
         {
             await manager.CreateAsync(new OpenIddictApplicationDescriptor
             {
-                ClientId = "Thunder",
-                ClientSecret = "Thunder-Secret",
-                DisplayName = "Thunder",
+                ClientId = "thunder",
+                ClientSecret = "thunder-secret",
+                DisplayName = "thunder",
                 RedirectUris = { new Uri("https://www.thunderclient.com/oauth/callback") },
                 Permissions =
-                    {
-                        OpenIddictConstants.Permissions.Endpoints.Token,
-                        OpenIddictConstants.Permissions.Endpoints.Authorization,
-                        OpenIddictConstants.Permissions.GrantTypes.ClientCredentials,
-                        OpenIddictConstants.Permissions.GrantTypes.AuthorizationCode,
-                        Permissions.Scopes.Email,
-                        Permissions.Scopes.Profile,
-                        Permissions.Scopes.Roles,
-                        OpenIddictConstants.Permissions.ResponseTypes.Code,
-                        OpenIddictConstants.Permissions.Prefixes.Scope + "Api"
-                    },
-                Requirements = {
-                    Requirements.Features.ProofKeyForCodeExchange
-                }
+                {
+                    OpenIddictConstants.Permissions.Endpoints.Authorization,
+                    OpenIddictConstants.Permissions.Endpoints.Token,
 
+                    OpenIddictConstants.Permissions.GrantTypes.AuthorizationCode,
+                    OpenIddictConstants.Permissions.GrantTypes.ClientCredentials,
+
+                    OpenIddictConstants.Permissions.Prefixes.Scope + "api",
+
+                    OpenIddictConstants.Permissions.ResponseTypes.Code
+                }
             }, cancellationToken);
         }
 
-        if (await manager.FindByClientIdAsync("Postman", cancellationToken) is null)
+        if (await manager.FindByClientIdAsync("muver", cancellationToken) is null)
         {
             await manager.CreateAsync(new OpenIddictApplicationDescriptor
             {
-                ClientId = "Postman",
-                DisplayName = "Postman",
-                RedirectUris = { new Uri("https://oidcdebugger.com/debug") },
+                ClientId = "muver",
+                ClientSecret = "muver-secret",
+                DisplayName = "muver",
+                RedirectUris = { new Uri("http://localhost:3000/api/auth/callback/muver") },
                 Permissions =
-                    {
-                        OpenIddictConstants.Permissions.Endpoints.Token,
-                        OpenIddictConstants.Permissions.Endpoints.Authorization,
-                        OpenIddictConstants.Permissions.GrantTypes.AuthorizationCode,
+                {
+                    OpenIddictConstants.Permissions.Endpoints.Authorization,
+                    OpenIddictConstants.Permissions.Endpoints.Token,
 
-                        OpenIddictConstants.Permissions.Prefixes.Scope + "Api",
+                    OpenIddictConstants.Permissions.GrantTypes.AuthorizationCode,
+                    OpenIddictConstants.Permissions.GrantTypes.ClientCredentials,
 
-                        OpenIddictConstants.Permissions.ResponseTypes.Code
-                    },
-                Type= "Public",
-                ConsentType="None"
+                    OpenIddictConstants.Permissions.Prefixes.Scope + "api",
 
+                    OpenIddictConstants.Permissions.ResponseTypes.Code
+                }
             }, cancellationToken);
         }
     }
