@@ -5,8 +5,8 @@ namespace IdentityProvider.Pages.Model
 {
 	public class LoginModel
 	{
-		[Required(ErrorMessage = "Email requerido")]
-		[Display(Name = "Correo electronico o nombre de usuario")]
+		[Required(ErrorMessage = "Correo electrónico o nombre de usuario requerido")]
+		[Display(Name = "Correo electrónico o nombre de usuario")]
 		public string Email { get; set; } = string.Empty;
 		[Required(ErrorMessage = "Contraseña requerida")]
 		[DataType(DataType.Password, ErrorMessage = "Formato incorrecto")]

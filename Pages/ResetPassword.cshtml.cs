@@ -13,7 +13,8 @@ namespace IdentityProvider.Pages
 		private readonly UserManager<ApplicationUser> _userManager;
 		[BindProperty]
 		public ModelResetPassword Reset { get; set; } = new ModelResetPassword();
-		public string Error {  get; set; } =string.Empty;
+		public string Error {get; set; } =string.Empty;
+		public bool AllowBack {get;set;} = false;
 		public string ReturnUrl { get; set; } = string.Empty;
 		public ResetPasswordModel(UserManager<ApplicationUser> userManager)
 		{
@@ -39,10 +40,9 @@ namespace IdentityProvider.Pages
 			var user = await _userManager.FindByIdAsync(userId);
 			if (user == null)
 			{
-				return RedirectToPage("/Signin", new { ReturnUrl });
-			}
-
-			if(!user.EmailConfirmed)
+				Error = "Usuario inexistente";
+				return Page();
+			}else if(!user.EmailConfirmed)
 			{
 				return RedirectToPage("/Signin", new { ReturnUrl });
 			}
@@ -55,9 +55,9 @@ namespace IdentityProvider.Pages
 				if (Now > ExpirationTime)
 				{
 					Error = "No puedes acceder a este recurso";
+					return Page();
 				}
 			}
-			
 			return Page();
 		}
 
@@ -70,6 +70,11 @@ namespace IdentityProvider.Pages
 
 			if (!ModelState.IsValid)
 			{
+				 foreach (var error in ModelState)
+                    {
+                        Error = error.Value.Errors.First().ErrorMessage;
+                        break;
+                    }
 				return Page();
 			}
 
@@ -77,19 +82,25 @@ namespace IdentityProvider.Pages
 			if (user == null)
 			{
 				// Don't reveal that the user does not exist
-				return RedirectToPage("/ResetPasswordConfirmation");
+				return RedirectToPage("/Signin");
 			}
 
 			var result = await _userManager.ResetPasswordAsync(user, code, Reset.Password);
 			if (result.Succeeded)
 			{
-				return RedirectToPage("/ResetPasswordConfirmation");
+				AllowBack =true;
+				return Page();
 			}
 			else
 			{
-				Error = "Se produjo un erro al actualizar contraseña";
+				Error = "Se produjo un erro al actualizar contraseÃ±a";
 				return Page();
 			}
 		}
+
+		 public IActionResult OnPostToSignIn(string url)
+        {
+            return RedirectToPage("/Signin", new {ReturnUrl = url});
+        }
 	}
 }

@@ -15,6 +15,7 @@ var builder = WebApplication.CreateBuilder(args);
 var Services = builder.Services;
 // My services
 Services.AddScoped<IEmailSender, EmailSender>();
+Services.AddScoped<ISmsSender, SmsSender>();
 Services.Configure<EmailerOptions>(options => builder.Configuration.GetSection("EmailSettings").Bind(options));
 Services.Configure<ReturnUrlOptions>(options => builder.Configuration.GetSection("ReturnUrl").Bind(options));
 
@@ -45,9 +46,16 @@ Services.AddDbContext<ApplicationDbContext>(o =>
 Services.AddIdentity<ApplicationUser, ApplicationRole>(o =>
 {
     o.SignIn.RequireConfirmedAccount = true;
-
-    o.User.RequireUniqueEmail = true;
+    // password config
+    o.Password.RequireDigit = true;
     o.Password.RequireNonAlphanumeric = false;
+    o.Password.RequiredLength = 6;
+    o.Password.RequireLowercase = true;
+    o.Password.RequireUppercase = true;
+    // user config
+    o.User.RequireUniqueEmail = true;
+    o.User.AllowedUserNameCharacters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._@";
+    // claims config
     o.ClaimsIdentity.RoleClaimType = "Application-Default-User";
     o.ClaimsIdentity.SecurityStampClaimType = TimeSpan.TicksPerSecond.ToString(); 
 

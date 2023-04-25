@@ -37,7 +37,7 @@ body {
 .facebook {
   background-color: #3b5998;
   border: thin solid #3b5998;
-  box-shadow: 1px 1px 1px grey;
+  box-shadow: 1px 1px 1px #D3D3D3;
   white-space: nowrap;
   color: white;
   
@@ -55,15 +55,15 @@ body {
 .google {
   background: white;
   color: #444;
-  border: thin solid #888;
-  box-shadow: 1px 1px 1px grey;
+  box-shadow: 1px 1px 1px #D3D3D3;
+  border: thin solid gray;
   white-space: nowrap;
 }
 .google:hover {
   cursor: pointer;
   background: white;
   color: #444;
-  border: thin solid #888;
+  border: thin solid #D3D3D3;
   box-shadow: 1px 1px 1px grey;
   white-space: nowrap;
 }
@@ -71,15 +71,15 @@ body {
 .custom-btn {
   background: white;
   color: #444;
-  border: thin solid #888;
-  box-shadow: 1px 1px 1px grey;
+  border: thin solid #D3D3D3;
+  box-shadow: 1px 1px 1px #D3D3D3;
   white-space: nowrap;
 }
 .custom-btn:hover {
   cursor: pointer;
   background: white;
   color: #444;
-  border: thin solid #888;
+  border: thin solid #D3D3D3;
   box-shadow: 1px 1px 1px grey;
   white-space: nowrap;
 }

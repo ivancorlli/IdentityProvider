@@ -5,9 +5,12 @@ namespace IdentityProvider.Entity;
 
 public class ApplicationRole : IdentityRole
 {
-    public RoleTypes Type {get; private set;}
+    //public RoleTypes Type {get; private set;}
     public ApplicationRole(RoleTypes type)
     {
-        Type = type;
+        //Type = type;
+    }
+    public ApplicationRole()
+    {
     }
 }

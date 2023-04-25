@@ -8,6 +8,7 @@ using Microsoft.Extensions.Options;
 using System.Security.Claims;
 using System.Text;
 using IdentityProvider.Interface;
+using Microsoft.AspNetCore.Authentication;
 
 namespace IdentityProvider.Pages;
 
@@ -19,6 +20,7 @@ public class ExternalLogin : PageModel
     private readonly IUserLoginStore<ApplicationUser> _userLogin;
     private readonly IOptions<ReturnUrlOptions> _defaultReturn;
     private readonly IEmailSender _emailSender;
+    private readonly ISmsSender _smsSender;
 
     public string ReturnUrl { get; set; } = string.Empty;
     public string Error { get; set; } = string.Empty;
@@ -28,7 +30,8 @@ public class ExternalLogin : PageModel
         UserManager<ApplicationUser> userManager,
         IUserStore<ApplicationUser> userStore,
         IOptions<ReturnUrlOptions> returnUrl,
-        IEmailSender emailSender
+        IEmailSender emailSender,
+        ISmsSender smsSender
         )
     {
         _signInManager = signInManager;
@@ -37,17 +40,18 @@ public class ExternalLogin : PageModel
         _defaultReturn = returnUrl;
         _emailSender = emailSender;
         _userLogin = GetLogins();
+        _smsSender = smsSender;
     }
 
     public IActionResult OnGet() => RedirectToPage("/Signin");
 
     public IActionResult OnPost(string provider, string returnUrl)
     {
-        if(string.IsNullOrEmpty(returnUrl) || string.IsNullOrEmpty(provider)) 
+        if (string.IsNullOrEmpty(returnUrl) || string.IsNullOrEmpty(provider))
             return Redirect("/Signin");
 
         ReturnUrl = returnUrl;
-        var redirectUrl = Url.Page("/ExternalLogin", pageHandler: "Callback", values: new { ReturnUrl});
+        var redirectUrl = Url.Page("/ExternalLogin", pageHandler: "Callback", values: new { ReturnUrl });
         var properties = _signInManager.ConfigureExternalAuthenticationProperties(provider, redirectUrl);
         return new ChallengeResult(provider, properties);
     }
@@ -71,7 +75,21 @@ public class ExternalLogin : PageModel
         var result = await _signInManager.ExternalLoginSignInAsync(info.LoginProvider, info.ProviderKey, isPersistent: false, bypassTwoFactor: true);
         if (result.Succeeded)
         {
-            return Redirect(ReturnUrl);
+            var user = await _userManager.FindByEmailAsync(info.Principal.FindFirstValue(ClaimTypes.Email)!);
+            if (user is not null)
+            {
+                if (user.PhoneNumber is null)
+                {
+                    return RedirectToPage("/ConfigPhone", new { ReturnUrl });
+                }else
+                {
+                    return new RedirectResult(ReturnUrl);
+                }
+            }else {
+                Error = "Se produjo un erro al obtener tus datos.";
+                return Page();   
+            }
+
         }
         else if (result.IsNotAllowed)
         {
@@ -124,7 +142,8 @@ public class ExternalLogin : PageModel
                 user = new ApplicationUser
                 {
                     Email = email,
-                    UserName = email
+                    UserName = email,
+                    TwoFactorEnabled = false
                 };
                 // Guardamos en la base
                 var result = await _userManager.CreateAsync(user);
@@ -145,8 +164,8 @@ public class ExternalLogin : PageModel
                             pageHandler: null,
                             values: new
                             {
-                                UserId=userId,
-                                Code=code,
+                                UserId = userId,
+                                Code = code,
                                 ReturnUrl = returnUrl,
                                 Exp = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(exp.ToString())),
                             },
@@ -154,7 +173,7 @@ public class ExternalLogin : PageModel
                             );
                         await _emailSender.SendWelcome(user.Email!.ToString());
                         await _emailSender.SendConfirmationEmail(user.Email!.ToString(), callback!);
-                        return RedirectToPage("/SignupConfirmation", new { email = user.Email, ReturnUrl = returnUrl});
+                        return RedirectToPage("/SignupConfirmation", new { email = user.Email, ReturnUrl = returnUrl });
                     }
                     else
                     {
@@ -188,7 +207,7 @@ public class ExternalLogin : PageModel
                 if (exists.Count > 0)
                 {
                     Error = $"Tu cuenta ya ha sido registrada con {exists.First().ProviderDisplayName}";
-                    AllowBack = true ;
+                    AllowBack = true;
                     return Page();
                 }
                 else
@@ -235,14 +254,14 @@ public class ExternalLogin : PageModel
                                 values: new
                                 {
                                     UserId = userId,
-                                    Code=code,
+                                    Code = code,
                                     ReturnUrl = returnUrl,
                                     Exp = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(exp.ToString())),
                                 },
                                 protocol: Request.Scheme
                                 );
                             await _emailSender.SendConfirmationEmail(user.Email!.ToString(), callback!);
-                            return RedirectToPage("/SignupConfirmation", new { email = user.Email, ReturnUrl=returnUrl });
+                            return RedirectToPage("/SignupConfirmation", new { email = user.Email, ReturnUrl = returnUrl });
                         }
                     }
                     else
@@ -262,7 +281,7 @@ public class ExternalLogin : PageModel
     }
     public IActionResult OnPostToSignIn(string url)
     {
-        return RedirectToPage("/Signin", new {ReturnUrl = url });
+        return RedirectToPage("/Signin", new { ReturnUrl = url });
     }
     private IUserLoginStore<ApplicationUser> GetLogins()
     {

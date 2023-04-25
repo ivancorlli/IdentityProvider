@@ -9,78 +9,133 @@ using IdentityProvider.Pages.Model;
 
 namespace IdentityProvider.Pages
 {
-	public class RecoveryModel : PageModel
-	{
-		private readonly UserManager<ApplicationUser> _userManager;
-		private readonly IEmailSender _emailSender;
+    public class RecoveryModel : PageModel
+    {
+        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IEmailSender _emailSender;
+        private readonly IUserStore<ApplicationUser> _userStore;
+        private readonly IUserLoginStore<ApplicationUser> _userLogin;
+        [BindProperty]
+        public ModelRecovery Recovery { get; set; } = new ModelRecovery();
+        public string ReturnUrl { get; set; } = string.Empty;
+        public string Error { get; set; } = string.Empty;
 
-		[BindProperty]
-		public ModelRecovery Recovery { get; set; } = new ModelRecovery();
-		public string ReturnUrl { get; set; } = string.Empty;
+        public RecoveryModel(UserManager<ApplicationUser> userManager, IEmailSender emailSender, IUserStore<ApplicationUser> userStore)
+        {
+            _userManager = userManager;
+            _emailSender = emailSender;
+            _userStore = userStore;
+			_userLogin =GetLogins();
+        }
 
-		public RecoveryModel(UserManager<ApplicationUser> userManager, IEmailSender emailSender)
-		{
-			_userManager = userManager;
-			_emailSender = emailSender;
-		}
+        public IActionResult? OnGet(string returnUrl)
+        {
+            if (returnUrl == null)
+            {
+                return Redirect("/Signin");
+            }
+            else
+            {
+                ReturnUrl = returnUrl;
+                return null;
+            }
 
-		public IActionResult? OnGet(string returnUrl)
-		{
-			if(returnUrl == null)
-			{
-				return Redirect("/Signin");
-			}else
-			{
-				ReturnUrl = returnUrl;
-				return null;
-			}
-
-		}
+        }
 
 
-		public async Task<IActionResult> OnPostAsync(string returnUrl)
-		{
+        public async Task<IActionResult> OnPostAsync(string returnUrl)
+        {
 
-			ReturnUrl = returnUrl;
+            ReturnUrl = returnUrl;
 
-			if (ModelState.IsValid)
-			{
-				var user = await _userManager.FindByEmailAsync(Recovery.Email);
-				if (user == null || !await _userManager.IsEmailConfirmedAsync(user))
-				{
-					return RedirectToPage("/ForgotPasswordConfirmation", new {ReturnUrl});
-				}
+            if (ModelState.IsValid)
+            {
+                var user = await _userManager.FindByEmailAsync(Recovery.Email);
+                if (user is null)
+                {
+                    Error = "Usuario inexistente";
+                    return Page();
+                }
+                else if (!user.EmailConfirmed)
+                {
+                    Error = "Tu cuenta no está verificada. Revisa tu correo electronico.";
+                    return Page();
+                }
+                else if (user.PasswordHash == null)
+                {
+                    // Buscamos los logins externos del usuario
+                    var providers = await _userLogin.GetLoginsAsync(user, CancellationToken.None);
+                    if (providers != null)
+                    {
+                        if (providers.Count > 0)
+                        {
+                            var message = "";
+                            if (providers.Count == 1)
+                            {
+                                message = providers[0].ProviderDisplayName!.ToString();
+                            }
+                            else
+                            {
 
-				if(user.PasswordHash == null) 
-				{
-					return RedirectToPage("/Signin",new {ReturnUrl});
-				}
-			
-				var code = await _userManager.GeneratePasswordResetTokenAsync(user);
-				code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
-				var Exp = DateTimeOffset.UtcNow.AddMinutes(15).ToUnixTimeSeconds();
-				var callbackUrl = Url.Page(
-					"/ResetPassword",
-					pageHandler: null,
-					values: new { 
-						UE = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(user.Id.ToString())), 
-						Code=code,
-						Exp = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(Exp.ToString())),
-						ReturnUrl
-					},
-					protocol: Request.Scheme)!;
+                                foreach (var provider in providers)
+                                {
+                                    message += $"{provider.ProviderDisplayName}, ";
+                                }
+                            }
+                            Error = $"No puedes acceder a este recurso. Puedes iniciar sesion con {message}";
+                            return Page();
+                        }
+                        else
+                        {
+                            Error = "Usuario inexistente";
+                            return Page();
+                        }
+                    }
+                    else
+                    {
+                        Error = "Usuario inexistente";
+                        return Page();
+                    }
+                }
+                else
+                {
 
-				await _emailSender.SendResetPassword(user.Email!,callbackUrl);
-				return RedirectToPage("/ForgotPasswordConfirmation", new { ReturnUrl });
-			}
+                    var code = await _userManager.GeneratePasswordResetTokenAsync(user);
+                    code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
+                    var Exp = DateTimeOffset.UtcNow.AddMinutes(15).ToUnixTimeSeconds();
+                    var callbackUrl = Url.Page(
+                        "/ResetPassword",
+                        pageHandler: null,
+                        values: new
+                        {
+                            UE = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(user.Id.ToString())),
+                            Code = code,
+                            Exp = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(Exp.ToString())),
+                            ReturnUrl
+                        },
+                        protocol: Request.Scheme)!;
 
-			return Page();
-		}
+                    await _emailSender.SendResetPassword(user.Email!, callbackUrl);
+                    return RedirectToPage("/ForgotPasswordConfirmation", new { ReturnUrl });
+                }
+            }else {
+                foreach (var error in ModelState)
+                    {
+                        Error = error.Value.Errors.First().ErrorMessage;
+                        break;
+                    }
+				return Page();
+            }
+        }
 
-		public IActionResult OnPostToSignUp(string url)
-		{
-			return RedirectToPage("/Signin", new {ReturnUrl = url});
-		}
+        public IActionResult OnPostToSignUp(string url)
+        {
+            return RedirectToPage("/Signin", new { ReturnUrl = url });
+        }
 
-	}
+        private IUserLoginStore<ApplicationUser> GetLogins()
+        {
+            return (IUserLoginStore<ApplicationUser>)_userStore;
+        }
+    }
 }

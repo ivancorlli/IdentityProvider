@@ -80,7 +80,14 @@ namespace IdentityProvider.Pages
                 {
                     foreach (var error in result.Errors)
                     {
-                        Error = error.Description;
+                        if(error.Code == "DuplicateUserName")
+                        {
+                            Error = $"El correo electrónico '{Register.Email}' ya ha sido registrado.";
+                        }else if(error.Code == "DuplicateEmail"){
+                            Error = $"El correo electrónico '{Register.Email}' ya ha sido registrado.";
+                        }else {
+                            Error = error.Description;
+                        }
                         break;
                     }
                 }
@@ -89,13 +96,12 @@ namespace IdentityProvider.Pages
             {
                 foreach (var modelError in ModelState)
                 {
-                    if (modelError.Key != "Error" && modelError.Value.Errors.Count > 0)
+                    if (modelError.Value.Errors.Count > 0)
                     {
                         Error = modelError.Value.Errors.First().ErrorMessage.ToString();
                         break;
                     }
                 }
-                ModelState.Clear();
                 return Page();
             }
             return Page();
