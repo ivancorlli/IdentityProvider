@@ -1,15 +1,16 @@
-using IdentityProvider.Enum;
+using IdentityProvider.Enumerables;
 
 namespace IdentityProvider.ValueObject;
 
 public record Access
 {
-    public string PermissionId { get; init; }
-    public string ResourceId { get; init; }
-    public string ResourceType { get; init; }
+    public string PermissionId { get; private set; } = default!;
+    public string ResourceId { get; private set; } = default!;
+    public string ResourceType { get; private set; } = default!;
     public AccessStatus Status { get; private set; }
-    public long CreatedAt { get; init; }
+    public long CreatedAt { get; private set; } = default!;
 
+    private Access(){}
     private Access(
         string permissionId,
         string resourceId

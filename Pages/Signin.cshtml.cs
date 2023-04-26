@@ -8,8 +8,6 @@ using Microsoft.Extensions.Options;
 using IdentityProvider.Options;
 using Microsoft.AspNetCore.Authentication;
 using IdentityProvider.Interface;
-using Microsoft.AspNetCore.WebUtilities;
-using System.Text;
 
 namespace IdentityProvider.Pages
 {

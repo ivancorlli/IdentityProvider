@@ -1,4 +1,4 @@
-using IdentityProvider.Enum;
+using IdentityProvider.Enumerables;
 using IdentityProvider.ValueObject;
 
 namespace IdentityProvider.Interface;
@@ -10,6 +10,7 @@ public interface IUserProfileBase
     public UserGender Gender { get; }
     public DateTime Birth { get; }
     public TimeStamp TimeStamp {get;}
+    public Address Address { get; }
     public Images? Pictures {get;}
     public EmergencyContact? EmergencyContact { get; }
     public Bio? Bio { get; }

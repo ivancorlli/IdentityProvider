@@ -5,12 +5,13 @@ namespace IdentityProvider.Entity;
 
 public class Permission : IPermissionBase
 {
-    public string Id {get;init;}
+    public string Id {get;private set;} = default!;
 
-    public string Name {get;private set;}
+    public string Name {get;private set;} =default!;
 
-    public TimeStamp TimeStamp {get;private set;}
+    public TimeStamp TimeStamp {get;private set;} = default!;
 
+    private Permission() {}
     public Permission(string name)
     {
         Id = Guid.NewGuid().ToString();

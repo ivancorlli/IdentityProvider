@@ -19,6 +19,36 @@ namespace IdentityProvider.Migrations
                 .HasAnnotation("ProductVersion", "7.0.5")
                 .HasAnnotation("Relational:MaxIdentifierLength", 64);
 
+            modelBuilder.Entity("IdentityProvider.Entity.ApplicationRole", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<string>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)");
+
+                    b.Property<string>("NormalizedName")
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NormalizedName")
+                        .IsUnique()
+                        .HasDatabaseName("RoleNameIndex");
+
+                    b.ToTable("AspNetRoles", (string)null);
+                });
+
             modelBuilder.Entity("IdentityProvider.Entity.ApplicationUser", b =>
                 {
                     b.Property<string>("Id")
@@ -37,6 +67,9 @@ namespace IdentityProvider.Migrations
 
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("tinyint(1)");
+
+                    b.Property<sbyte>("IsAuthenticatedExternaly")
+                        .HasColumnType("TINYINT");
 
                     b.Property<bool>("LockoutEnabled")
                         .HasColumnType("tinyint(1)");
@@ -61,7 +94,14 @@ namespace IdentityProvider.Migrations
                     b.Property<bool>("PhoneNumberConfirmed")
                         .HasColumnType("tinyint(1)");
 
+                    b.Property<string>("ProfileId")
+                        .HasColumnType("varchar(255)");
+
                     b.Property<string>("SecurityStamp")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
                         .HasColumnType("longtext");
 
                     b.Property<bool>("TwoFactorEnabled")
@@ -80,33 +120,83 @@ namespace IdentityProvider.Migrations
                         .IsUnique()
                         .HasDatabaseName("UserNameIndex");
 
+                    b.HasIndex("ProfileId");
+
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
+            modelBuilder.Entity("IdentityProvider.Entity.Permission", b =>
                 {
                     b.Property<string>("Id")
                         .HasColumnType("varchar(255)");
 
-                    b.Property<string>("ConcurrencyStamp")
-                        .IsConcurrencyToken()
-                        .HasColumnType("longtext");
-
                     b.Property<string>("Name")
-                        .HasMaxLength(256)
-                        .HasColumnType("varchar(256)");
-
-                    b.Property<string>("NormalizedName")
-                        .HasMaxLength(256)
-                        .HasColumnType("varchar(256)");
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("VARCHAR");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("NormalizedName")
-                        .IsUnique()
-                        .HasDatabaseName("RoleNameIndex");
+                    b.HasIndex("Name")
+                        .IsUnique();
 
-                    b.ToTable("AspNetRoles", (string)null);
+                    b.ToTable("Permission", (string)null);
+                });
+
+            modelBuilder.Entity("IdentityProvider.Entity.UserProfile", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<DateTime>("Birth")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Gender")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Profile", (string)null);
+                });
+
+            modelBuilder.Entity("IdentityProvider.ValueObject.Access", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("Id");
+
+                    b.Property<long>("CreatedAt")
+                        .HasColumnType("BIGINT");
+
+                    b.Property<string>("PermissionId")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("VARCHAR");
+
+                    b.Property<string>("ResourceId")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("VARCHAR");
+
+                    b.Property<string>("ResourceType")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("VARCHAR");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(25)
+                        .HasColumnType("varchar(25)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PermissionId");
+
+                    b.HasIndex("ResourceId");
+
+                    b.ToTable("Access", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -409,9 +499,305 @@ namespace IdentityProvider.Migrations
                     b.ToTable("OpenIddictTokens", (string)null);
                 });
 
+            modelBuilder.Entity("IdentityProvider.Entity.ApplicationUser", b =>
+                {
+                    b.HasOne("IdentityProvider.Entity.UserProfile", "Profile")
+                        .WithMany()
+                        .HasForeignKey("ProfileId");
+
+                    b.Navigation("Profile");
+                });
+
+            modelBuilder.Entity("IdentityProvider.Entity.Permission", b =>
+                {
+                    b.OwnsOne("IdentityProvider.ValueObject.TimeStamp", "TimeStamp", b1 =>
+                        {
+                            b1.Property<string>("PermissionId")
+                                .HasColumnType("varchar(255)");
+
+                            b1.Property<long>("CreatedAt")
+                                .HasColumnType("bigint");
+
+                            b1.Property<long>("UpdatedAt")
+                                .HasColumnType("bigint");
+
+                            b1.HasKey("PermissionId");
+
+                            b1.ToTable("Permission");
+
+                            b1.WithOwner()
+                                .HasForeignKey("PermissionId");
+                        });
+
+                    b.Navigation("TimeStamp")
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("IdentityProvider.Entity.UserProfile", b =>
+                {
+                    b.OwnsOne("IdentityProvider.ValueObject.PersonName", "Name", b1 =>
+                        {
+                            b1.Property<string>("UserProfileId")
+                                .HasColumnType("varchar(255)");
+
+                            b1.Property<string>("FirstName")
+                                .IsRequired()
+                                .HasMaxLength(25)
+                                .HasColumnType("VARCHAR");
+
+                            b1.Property<string>("LastName")
+                                .IsRequired()
+                                .HasMaxLength(25)
+                                .HasColumnType("VARCHAR");
+
+                            b1.Property<string>("NormalizeName")
+                                .IsRequired()
+                                .HasMaxLength(50)
+                                .HasColumnType("VARCHAR");
+
+                            b1.HasKey("UserProfileId");
+
+                            b1.ToTable("Profile");
+
+                            b1.WithOwner()
+                                .HasForeignKey("UserProfileId");
+                        });
+
+                    b.OwnsOne("IdentityProvider.ValueObject.TimeStamp", "TimeStamp", b1 =>
+                        {
+                            b1.Property<string>("UserProfileId")
+                                .HasColumnType("varchar(255)");
+
+                            b1.Property<long>("CreatedAt")
+                                .HasColumnType("BIGINT");
+
+                            b1.Property<long>("UpdatedAt")
+                                .HasColumnType("BIGINT");
+
+                            b1.HasKey("UserProfileId");
+
+                            b1.ToTable("Profile");
+
+                            b1.WithOwner()
+                                .HasForeignKey("UserProfileId");
+                        });
+
+                    b.OwnsOne("IdentityProvider.ValueObject.Address", "Address", b1 =>
+                        {
+                            b1.Property<string>("UserProfileId")
+                                .HasColumnType("varchar(255)");
+
+                            b1.Property<string>("City")
+                                .IsRequired()
+                                .HasMaxLength(25)
+                                .HasColumnType("VARCHAR");
+
+                            b1.Property<string>("Country")
+                                .IsRequired()
+                                .HasMaxLength(25)
+                                .HasColumnType("VARCHAR");
+
+                            b1.Property<string>("State")
+                                .IsRequired()
+                                .HasMaxLength(25)
+                                .HasColumnType("VARCHAR");
+
+                            b1.Property<string>("Street")
+                                .HasColumnType("longtext");
+
+                            b1.Property<int?>("StreetNumber")
+                                .HasColumnType("int");
+
+                            b1.Property<string>("ZipCode")
+                                .IsRequired()
+                                .HasMaxLength(10)
+                                .HasColumnType("VARCHAR");
+
+                            b1.HasKey("UserProfileId");
+
+                            b1.ToTable("Profile");
+
+                            b1.WithOwner()
+                                .HasForeignKey("UserProfileId");
+                        });
+
+                    b.OwnsOne("IdentityProvider.ValueObject.Bio", "Bio", b1 =>
+                        {
+                            b1.Property<string>("UserProfileId")
+                                .HasColumnType("varchar(255)");
+
+                            b1.Property<string>("Value")
+                                .IsRequired()
+                                .HasMaxLength(350)
+                                .HasColumnType("VARCHAR");
+
+                            b1.HasKey("UserProfileId");
+
+                            b1.ToTable("Profile");
+
+                            b1.WithOwner()
+                                .HasForeignKey("UserProfileId");
+                        });
+
+                    b.OwnsOne("IdentityProvider.ValueObject.EmergencyContact", "EmergencyContact", b1 =>
+                        {
+                            b1.Property<string>("UserProfileId")
+                                .HasColumnType("varchar(255)");
+
+                            b1.Property<string>("RelationShip")
+                                .IsRequired()
+                                .HasColumnType("longtext");
+
+                            b1.HasKey("UserProfileId");
+
+                            b1.ToTable("Profile");
+
+                            b1.WithOwner()
+                                .HasForeignKey("UserProfileId");
+
+                            b1.OwnsOne("IdentityProvider.ValueObject.ContactPhone", "Phone", b2 =>
+                                {
+                                    b2.Property<string>("EmergencyContactUserProfileId")
+                                        .HasColumnType("varchar(255)");
+
+                                    b2.Property<string>("AreaCode")
+                                        .IsRequired()
+                                        .HasMaxLength(10)
+                                        .HasColumnType("VARCHAR");
+
+                                    b2.Property<string>("CountryCode")
+                                        .IsRequired()
+                                        .HasMaxLength(5)
+                                        .HasColumnType("VARCHAR");
+
+                                    b2.Property<string>("CountryPrefix")
+                                        .IsRequired()
+                                        .HasMaxLength(5)
+                                        .HasColumnType("VARCHAR");
+
+                                    b2.Property<string>("Number")
+                                        .IsRequired()
+                                        .HasMaxLength(15)
+                                        .HasColumnType("VARCHAR");
+
+                                    b2.HasKey("EmergencyContactUserProfileId");
+
+                                    b2.ToTable("Profile");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("EmergencyContactUserProfileId");
+                                });
+
+                            b1.OwnsOne("IdentityProvider.ValueObject.PersonName", "Name", b2 =>
+                                {
+                                    b2.Property<string>("EmergencyContactUserProfileId")
+                                        .HasColumnType("varchar(255)");
+
+                                    b2.Property<string>("FirstName")
+                                        .IsRequired()
+                                        .HasMaxLength(25)
+                                        .HasColumnType("VARCHAR");
+
+                                    b2.Property<string>("LastName")
+                                        .IsRequired()
+                                        .HasMaxLength(25)
+                                        .HasColumnType("VARCHAR");
+
+                                    b2.Property<string>("NormalizeName")
+                                        .IsRequired()
+                                        .HasMaxLength(50)
+                                        .HasColumnType("VARCHAR");
+
+                                    b2.HasKey("EmergencyContactUserProfileId");
+
+                                    b2.ToTable("Profile");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("EmergencyContactUserProfileId");
+                                });
+
+                            b1.Navigation("Name")
+                                .IsRequired();
+
+                            b1.Navigation("Phone")
+                                .IsRequired();
+                        });
+
+                    b.OwnsOne("IdentityProvider.ValueObject.Images", "Pictures", b1 =>
+                        {
+                            b1.Property<string>("UserProfileId")
+                                .HasColumnType("varchar(255)");
+
+                            b1.Property<string>("ProfilePicture")
+                                .IsRequired()
+                                .HasMaxLength(250)
+                                .HasColumnType("VARCHAR");
+
+                            b1.HasKey("UserProfileId");
+
+                            b1.ToTable("Profile");
+
+                            b1.WithOwner()
+                                .HasForeignKey("UserProfileId");
+                        });
+
+                    b.OwnsOne("IdentityProvider.ValueObject.MedicalInfo", "Medical", b1 =>
+                        {
+                            b1.Property<string>("UserProfileId")
+                                .HasColumnType("varchar(255)");
+
+                            b1.Property<string>("Aptitude")
+                                .IsRequired()
+                                .HasMaxLength(100)
+                                .HasColumnType("VARCHAR");
+
+                            b1.Property<string>("Disabilities")
+                                .IsRequired()
+                                .HasMaxLength(100)
+                                .HasColumnType("VARCHAR");
+
+                            b1.HasKey("UserProfileId");
+
+                            b1.ToTable("Profile");
+
+                            b1.WithOwner()
+                                .HasForeignKey("UserProfileId");
+                        });
+
+                    b.Navigation("Address")
+                        .IsRequired();
+
+                    b.Navigation("Bio");
+
+                    b.Navigation("EmergencyContact");
+
+                    b.Navigation("Medical");
+
+                    b.Navigation("Name")
+                        .IsRequired();
+
+                    b.Navigation("Pictures");
+
+                    b.Navigation("TimeStamp")
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("IdentityProvider.ValueObject.Access", b =>
+                {
+                    b.HasOne("IdentityProvider.Entity.Permission", null)
+                        .WithMany()
+                        .HasForeignKey("PermissionId")
+                        .IsRequired();
+
+                    b.HasOne("IdentityProvider.Entity.ApplicationUser", null)
+                        .WithMany("Permissions")
+                        .HasForeignKey("ResourceId")
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
+                    b.HasOne("IdentityProvider.Entity.ApplicationRole", null)
                         .WithMany()
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -438,7 +824,7 @@ namespace IdentityProvider.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<string>", b =>
                 {
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
+                    b.HasOne("IdentityProvider.Entity.ApplicationRole", null)
                         .WithMany()
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -482,6 +868,11 @@ namespace IdentityProvider.Migrations
                     b.Navigation("Application");
 
                     b.Navigation("Authorization");
+                });
+
+            modelBuilder.Entity("IdentityProvider.Entity.ApplicationUser", b =>
+                {
+                    b.Navigation("Permissions");
                 });
 
             modelBuilder.Entity("OpenIddict.EntityFrameworkCore.Models.OpenIddictEntityFrameworkCoreApplication", b =>

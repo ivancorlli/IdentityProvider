@@ -2,7 +2,7 @@ namespace IdentityProvider.ValueObject;
 
 public record TimeStamp
 {
-    public long CreatedAt {get;init;}
+    public long CreatedAt {get;private set;}
     public long UpdatedAt {get;private set;}
 
     internal TimeStamp()

@@ -94,7 +94,6 @@ public class ExternalLogin : PageModel
                 Error = "Se produjo un erro al obtener tus datos.";
                 return Page();
             }
-
         }
         else if (result.IsNotAllowed)
         {
