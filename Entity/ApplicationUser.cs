@@ -10,13 +10,22 @@ namespace IdentityProvider.Entity
         //public UserProfile? Profile { get; private set; }
         //public IEnumerable<Access> Permissions => _permissions;
 
+        // It's distiguish between users that have been authenticated by a Social Provider, they are not going to use two factor, becouse theirs provider is already implenenting it.
+        public bool IsAuthenticatedExternaly {get;private set;}
 
         // OWn Config //
         //private List<Access> _permissions {get; set; } = new List<Access>();
         // End Config//
 
-        public ApplicationUser()
+        public ApplicationUser(bool useExternalAuth)
         {
+            IsAuthenticatedExternaly = useExternalAuth;
+            if(IsAuthenticatedExternaly)
+            {
+                TwoFactorEnabled = false;
+            }else {
+                TwoFactorEnabled = true;
+            }
             //Status = UserStatus.Active;
         }
 

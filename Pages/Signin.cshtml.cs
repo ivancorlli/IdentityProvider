@@ -46,6 +46,7 @@ namespace IdentityProvider.Pages
         public async Task<IActionResult?> OnGetAsync(string? returnUrl = null)
         {
 
+            // If user is not comming for a oauth client we attach a default callback route
             if (string.IsNullOrEmpty(returnUrl))
             {
                 ReturnUrl = _defaultReturnUrl.Value.Default.ToString();
@@ -55,6 +56,7 @@ namespace IdentityProvider.Pages
                 ReturnUrl = returnUrl;
             }
 
+            // Verify user is authenticated with the identity scheme
             var auth = await HttpContext.AuthenticateAsync(IdentityConstants.ApplicationScheme);
             if (auth.Succeeded)
             {
@@ -62,27 +64,36 @@ namespace IdentityProvider.Pages
                 var user = await _userManager.FindByIdAsync(id!.Value);
                 if (user is not null)
                 {
-                    if (user.PhoneNumber is null)
+                    // If user exists, refresh his authentication cookie
+                    await _signIn.RefreshSignInAsync(user);
+                    // If phone is not verified or is it null redirect to page
+                    if (user.PhoneNumber is null || user.PhoneNumberConfirmed is false)
                     {
-                        return RedirectToPage("/ConfigPhone", new { ReturnUrl,UE = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(user.Id.ToString())) });
-                    } else {
+                        return RedirectToPage("/ConfigPhone");
+                    }
+                    else
+                    {
                         return new RedirectResult(ReturnUrl);
                     }
                 }
                 else
                 {
-                    await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
-                    var list = await _signIn.GetExternalAuthenticationSchemesAsync();
-                    ExternalLogins = list.ToList();
-                    return null;
+                // Delete all their cookies
+                await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
+                // Set all the external authentication methods
+                var list = await _signIn.GetExternalAuthenticationSchemesAsync();
+                ExternalLogins = list.ToList();
+                return Page();
                 }
             }
             else
             {
+                // Delete all their cookies
                 await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
+                // Set all the external authentication methods
                 var list = await _signIn.GetExternalAuthenticationSchemesAsync();
                 ExternalLogins = list.ToList();
-                return null;
+                return Page();
             }
         }
 
@@ -96,32 +107,35 @@ namespace IdentityProvider.Pages
             {
                 ReturnUrl = returnUrl;
             }
+            // Sets all the external authentication methods
+            var list = await _signIn.GetExternalAuthenticationSchemesAsync();
+            ExternalLogins = list.ToList();
+            // If the model is valid we can login the user
             if (ModelState.IsValid)
             {
-                var list = await _signIn.GetExternalAuthenticationSchemesAsync();
-                ExternalLogins = list.ToList();
-
+                // search user
                 ApplicationUser? user;
                 if (Login.Email.Contains(char.Parse("@")))
                 {
-                    // Buscamos al usuario por su email
+                    // get user by the email
                     var email = _userManager.NormalizeEmail(Login.Email);
                     user = await _userManager.FindByEmailAsync(email);
                 }
                 else
                 {
-                    // Buscamos al usuario por su nombre de usuario
+                    // Get user by unsermae
                     user = await _userManager.FindByNameAsync(Login.Email);
                 }
 
+                // If the user exists we con follow with login
                 if (user != null)
                 {
-                    // Si la contrasenia es null, entonces existe el usuario pero resgistrado con un provedor
+                    // If the password is null, this meand the user has been authenticated with a social provider
                     if (string.IsNullOrEmpty(user.PasswordHash))
                     {
-                        // Buscamos los logins externos del usuario
+                        // search all the providers that the user has used to authenticate and return it in a informational message
                         var providers = await _userLogin.GetLoginsAsync(user, CancellationToken.None);
-                        if (providers != null)
+                        if (providers is not null)
                         {
                             if (providers.Count > 0)
                             {
@@ -143,54 +157,72 @@ namespace IdentityProvider.Pages
                             }
                             else
                             {
+                                // If the user doesn't has any providers show an erro message
                                 Error = "Usuario inexistente";
                                 return Page();
                             }
                         }
                         else
                         {
+                            // If the user doesn't has any providers show an erro message
                             Error = "Usuario inexistente";
                             return Page();
                         }
                     }
 
-                    var result = await _signIn.PasswordSignInAsync(user, Login.Password, Login.Remember, lockoutOnFailure: false);
-                    if (result.Succeeded)
+                    // If user exists we have to use the authentication method than the user prefer
+                    if (
+                        user.PhoneNumber is not null &&
+                        user.PhoneNumberConfirmed &&
+                        user.TwoFactorEnabled
+                    )
                     {
-                        if (user.PhoneNumber is null)
-                        {
-                            return RedirectToPage("/ConfigPhone", new { ReturnUrl,UE = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(user.Id.ToString())) });
-                        }
-
-                        if (user.TwoFactorEnabled)
-                        {
-                            var code = await _userManager.GenerateTwoFactorTokenAsync(user, "Phone");
-                            await _smsSender.TwoFactorMessage(user.Email!, code);
-                            return RedirectToPage("/TwoFactor", new { ReturnUrl });
-                        }
-                        return Redirect(ReturnUrl);
-                    }
-                    else if (result.IsNotAllowed)
-                    {
-
-                        Error = "Debes verificar tu cuenta, por favor revisa tu correo electronico";
-                        return Page();
-
+                        // Check password is correct
+                        // Create a two factor code
+                        // Redirect to Two Factor Page
+                        return RedirectToPage("/TwoFactor");
                     }
                     else
                     {
-                        Error = "Contraseña incorrecta";
-                        return Page();
+                        // Authenticate user with password
+                        var result = await _signIn.PasswordSignInAsync(user, Login.Password, Login.Remember, lockoutOnFailure: false);
+                        // If auth is succeed redirect user to corresponde page
+                        if (result.Succeeded)
+                        {
+                            // If phone number is not set, redirect to page
+                            if (user.PhoneNumber is null || user.PhoneNumberConfirmed is false)
+                            {
+                                return RedirectToPage("/ConfigPhone");
+                            }else {
+                                // otherwise redirect to callback url
+                                return new RedirectResult(ReturnUrl);
+                            }
+                        }
+                        // If user is not allowed it's means user's email hasn't been verified.
+                        else if (result.IsNotAllowed)
+                        {
+                            // Show an erro messsage 
+                            Error = "Debes verificar tu cuenta, por favor revisa tu correo electronico";
+                            return Page();
+                        }
+                        else
+                        {
+                            // If till there is an error, probably the password is wrong
+                            Error = "Contraseña incorrecta";
+                            return Page();
+                        }
                     }
                 }
                 else
                 {
+                    // If the user doesn't exists show an erro message
                     Error = "Usuario inexistente";
                     return Page();
                 }
             }
             else
             {
+                // When the model is invalid show respective error message
                 foreach (var modelError in ModelState)
                 {
                     if (modelError.Value.Errors.Count > 0)
@@ -199,7 +231,6 @@ namespace IdentityProvider.Pages
                         break;
                     }
                 }
-
                 return Page();
             }
         }

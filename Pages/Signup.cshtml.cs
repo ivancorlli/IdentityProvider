@@ -51,7 +51,11 @@ namespace IdentityProvider.Pages
             
             if (ModelState.IsValid)
             {
-				var user = new ApplicationUser { Email = Register.Email.Trim(), UserName = Register.Email.ToLower().Trim() };
+                // Create a new user and give him some credentials, it's very important to initialize it with false for 'IsAuthenticatedExternaly', It's set TwoFactor authentication enabled for default.
+				var user = new ApplicationUser(false) { 
+                    Email = Register.Email.Trim(), 
+                    UserName = Register.Email.ToLower().Trim(),
+                    };
                 var result = await _userManager.CreateAsync(user, Register.Password);
                 if (result.Succeeded)
                 {
