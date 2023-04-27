@@ -21,15 +21,15 @@
                 <form method="post">
                     <div class="mb-3">
                         <label for="email" class="form-label">Correo electrónico</label>
-                        <input type="email" class="form-control" id="email" placeholder="" asp-for="Register.Email">
+                        <input type="email" class="form-control" autocomplete="email"  id="email" placeholder="" asp-for="Register.Email">
                     </div>
                     <div class="mb-3">
                         <label for="password" class="form-label">Contrseña</label>
-                        <input type="password" class="form-control" id="password" asp-for="Register.Password">
+                        <input type="password" class="form-control" autocomplete="new-password" id="password" asp-for="Register.Password">
                     </div>
                     <div class="mb-3">
                         <label for="confirm-password" class="form-label">Confirmar contrseña</label>
-                        <input type="password" class="form-control" id="confirm-password"
+                        <input type="password" class="form-control" autocomplete="on" id="confirm-password"
                             asp-for="Register.ConfirmPassword">
                     </div>
                     <button type="submit" class="btn btn-primary btn-block">Crear cuenta</button>

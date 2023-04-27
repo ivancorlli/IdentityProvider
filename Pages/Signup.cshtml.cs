@@ -8,6 +8,7 @@ using IdentityProvider.Interface;
 using System.Text;
 using Microsoft.Extensions.Options;
 using IdentityProvider.Options;
+using IdentityProvider.Constant;
 
 namespace IdentityProvider.Pages
 {
@@ -16,6 +17,7 @@ namespace IdentityProvider.Pages
         [BindProperty]
         public ModelRegister Register { get; set; } = new ModelRegister();
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly RoleManager<ApplicationRole> _roleManager;
 		private readonly IOptions<ReturnUrlOptions> _defaultReturnUrl;
         private readonly IEmailSender _emailSender;
 
@@ -24,11 +26,13 @@ namespace IdentityProvider.Pages
 
         public SignupModel(
             UserManager<ApplicationUser> userManager,
+            RoleManager<ApplicationRole> roleManager,
             IEmailSender emailSender,
 			IOptions<ReturnUrlOptions> returnUrl 
             )
         {
             _userManager = userManager;
+            _roleManager = roleManager;
             _emailSender = emailSender;
 			_defaultReturnUrl = returnUrl;
         }
@@ -56,6 +60,15 @@ namespace IdentityProvider.Pages
                 IdentityResult result = await _userManager.CreateAsync(user, Register.Password);
                 if (result.Succeeded)
                 {
+                    // Aggreagate a rol, bydeafult an application role
+                    bool role = await _roleManager.RoleExistsAsync(DefaultRoles.ApplicationUser);
+                    if(role)
+                    {
+                        await _userManager.AddToRoleAsync(user,DefaultRoles.ApplicationUser);
+                    }else {
+                        await _userManager.AddToRoleAsync(user,DefaultRoles.DefaultUser);
+                    }
+
                     string UserId = await _userManager.GetUserIdAsync(user);
                     string Code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
                     Code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(Code));
@@ -72,7 +85,9 @@ namespace IdentityProvider.Pages
                         },
                         protocol: Request.Scheme
                         )!;
+                    // Send welcom email
                     await _emailSender.SendWelcome(user.Email!.ToString());
+                    // Send confirmation email
                     await _emailSender.SendConfirmationEmail(user.Email.ToString(), callback!); ;
                     ModelState.Clear();
                     return RedirectToPage("/SignupConfirmation", new { Email = user.Email.ToString(), ReturnUrl });

@@ -16,22 +16,11 @@ namespace IdentityProvider.Entity
         // End Config//
 
         private ApplicationUser(){}
-        public ApplicationUser(bool useExternalAuth)
-        {
-            IsAuthenticatedExternaly = useExternalAuth;
-            if(IsAuthenticatedExternaly)
-            {
-                TwoFactorEnabled = false;
-            }else {
-                TwoFactorEnabled = true;
-            }
-            Status = UserStatus.Active;
-        }
-
         public static ApplicationUser CreateExternalUser(string email)
         {
             var newUser = new ApplicationUser
             {
+                Status = UserStatus.Active,
                 Email = email,
                 EmailConfirmed = true,
                 UserName =email,
@@ -45,6 +34,7 @@ namespace IdentityProvider.Entity
         {
             var newUser = new ApplicationUser
             {
+                Status = UserStatus.Active,
                 Email = email,
                 EmailConfirmed = true,
                 UserName =email,
@@ -59,6 +49,7 @@ namespace IdentityProvider.Entity
         public static ApplicationUser CreateLocalUser(string email)
         {
             var newUser = new ApplicationUser {
+                Status = UserStatus.Active,
                 Email = email,
                 UserName = email,
                 IsAuthenticatedExternaly = false,

@@ -8,6 +8,7 @@ using Microsoft.Extensions.Options;
 using IdentityProvider.Options;
 using Microsoft.AspNetCore.Authentication;
 using IdentityProvider.Interface;
+using IdentityProvider.Enumerables;
 
 namespace IdentityProvider.Pages;
 
@@ -62,16 +63,30 @@ public class SignInModel : PageModel
             var user = await _userManager.FindByIdAsync(id!.Value);
             if (user is not null)
             {
-                // If user exists, refresh his authentication cookie
-                await _signIn.RefreshSignInAsync(user);
-                // If phone is not verified or is it null redirect to page
-                if (user.PhoneNumber is null || user.PhoneNumberConfirmed is false)
+                if (user.Status != UserStatus.Active)
                 {
-                    return RedirectToPage("/ConfigPhone", new { ReturnUrl });
+                    // Delete all their cookies
+                    await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
+                    await HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
                 }
                 else
                 {
-                    return new RedirectResult(ReturnUrl);
+
+                    // If user exists, refresh his authentication cookie
+                    await _signIn.RefreshSignInAsync(user);
+                    // If phone is not verified or is it null or username is not set redirect to page
+                    if (user.PhoneNumber is null || user.NormalizedEmail == user.NormalizedUserName)
+                    {
+                        return RedirectToPage("/QuickStartProfile", new { ReturnUrl });
+                    }
+                    else if (user.PhoneNumberConfirmed)
+                    {
+                        return RedirectToPage("/ConfirmPhone", new { ReturnUrl });
+                    }
+                    else
+                    {
+                        return new RedirectResult(ReturnUrl);
+                    }
                 }
             }
             else
@@ -79,10 +94,6 @@ public class SignInModel : PageModel
                 // Delete all their cookies
                 await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
                 await HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
-                // Set all the external authentication methods
-                var list = await _signIn.GetExternalAuthenticationSchemesAsync();
-                ExternalLogins = list.ToList();
-                return Page();
             }
         }
         else
@@ -90,11 +101,11 @@ public class SignInModel : PageModel
             // Delete all their cookies
             await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
             await HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
-            // Set all the external authentication methods
-            var list = await _signIn.GetExternalAuthenticationSchemesAsync();
-            ExternalLogins = list.ToList();
-            return Page();
         }
+        // Set all the external authentication methods
+        var list = await _signIn.GetExternalAuthenticationSchemesAsync();
+        ExternalLogins = list.ToList();
+        return Page();
     }
 
     public async Task<IActionResult> OnPost(string? returnUrl = null)
@@ -130,9 +141,16 @@ public class SignInModel : PageModel
             // If the user exists we con follow with login
             if (user != null)
             {
+                // if user is not active dont let him login
+                if (user.Status != UserStatus.Active)
+                {
+                    Error = $"La cuenta '{user.Email}' no está activa. Comunicate con soporte";
+                    return Page();
+                }
                 // If the password is null, this meand the user has been authenticated with a social provider
                 if (string.IsNullOrEmpty(user.PasswordHash))
                 {
+
                     // search all the providers that the user has used to authenticate and return it in a informational message
                     var providers = await _userLogin.GetLoginsAsync(user, CancellationToken.None);
                     if (providers is not null)
@@ -170,11 +188,7 @@ public class SignInModel : PageModel
                 }
                 var local = await _signIn.UserManager.GetValidTwoFactorProvidersAsync(user);
                 // If user exists we have to use the authentication method than the user prefer
-                if (
-                    user.PhoneNumber is not null &&
-                    user.PhoneNumberConfirmed &&
-                    user.TwoFactorEnabled
-                )
+                if (user.TwoFactorEnabled)
                 {
                     // Check password is correct
                     // Create a two factor code
@@ -189,9 +203,13 @@ public class SignInModel : PageModel
                     if (result.Succeeded)
                     {
                         // If phone number is not set, redirect to page
-                        if (user.PhoneNumber is null || user.PhoneNumberConfirmed is false)
+                        if (user.PhoneNumber is null || user.NormalizedUserName == user.NormalizedEmail)
                         {
-                            return RedirectToPage("/ConfigPhone", new {ReturnUrl});
+                            return RedirectToPage("/QuickStartProfile", new { ReturnUrl });
+                        }
+                        else if (user.PhoneNumberConfirmed)
+                        {
+                            return RedirectToPage("/ConfirmPhone", new { ReturnUrl });
                         }
                         else
                         {

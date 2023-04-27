@@ -1,3 +1,4 @@
+using IdentityProvider.Constant;
 using IdentityProvider.Context;
 using IdentityProvider.Entity;
 using IdentityProvider.Helper;
@@ -56,10 +57,6 @@ Services.AddIdentity<ApplicationUser, ApplicationRole>(o =>
     // user config
     o.User.RequireUniqueEmail = true;
     o.User.AllowedUserNameCharacters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._@";
-    // claims config
-    o.ClaimsIdentity.RoleClaimType = "Application-Default-User";
-    o.ClaimsIdentity.SecurityStampClaimType = TimeSpan.TicksPerSecond.ToString(); 
-
 })
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
@@ -171,7 +168,7 @@ if (builder.Environment.EnvironmentName == "Development")
     Services.AddHostedService<DemoData>();
 }
 
-
+Services.AddHostedService<SeedRoles>();
 
 var app = builder.Build();
 

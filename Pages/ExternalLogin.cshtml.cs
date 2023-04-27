@@ -3,12 +3,11 @@ using IdentityProvider.Options;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Options;
 using System.Security.Claims;
-using System.Text;
 using IdentityProvider.Interface;
-using Microsoft.AspNetCore.Authentication;
+using IdentityProvider.Constant;
+using IdentityProvider.Enumerables;
 
 namespace IdentityProvider.Pages;
 
@@ -16,6 +15,7 @@ public class ExternalLogin : PageModel
 {
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly RoleManager<ApplicationRole> _roleManager;
     private readonly IUserStore<ApplicationUser> _userStore;
     private readonly IUserLoginStore<ApplicationUser> _userLogin;
     private readonly IOptions<ReturnUrlOptions> _defaultReturn;
@@ -28,6 +28,7 @@ public class ExternalLogin : PageModel
     public ExternalLogin(
         SignInManager<ApplicationUser> signInManager,
         UserManager<ApplicationUser> userManager,
+        RoleManager<ApplicationRole> roleManager,
         IUserStore<ApplicationUser> userStore,
         IOptions<ReturnUrlOptions> returnUrl,
         IEmailSender emailSender,
@@ -37,6 +38,7 @@ public class ExternalLogin : PageModel
         _signInManager = signInManager;
         _userManager = userManager;
         _userStore = userStore;
+        _roleManager = roleManager;
         _defaultReturn = returnUrl;
         _emailSender = emailSender;
         _userLogin = GetLogins();
@@ -78,7 +80,6 @@ public class ExternalLogin : PageModel
             string email = info.Principal.FindFirstValue(ClaimTypes.Email)!;
             // Search if user is already registered with this provider
             ApplicationUser? user = await _userLogin.FindByLoginAsync(info.LoginProvider, info.ProviderKey, CancellationToken.None);
-
             // IF user is not registered
             if (user == null)
             {
@@ -88,6 +89,17 @@ public class ExternalLogin : PageModel
                 var result = await _userManager.CreateAsync(user);
                 if (result.Succeeded)
                 {
+                    // Aggreagate a rol, bydeafult an application role
+                    bool role = await _roleManager.RoleExistsAsync(DefaultRoles.ApplicationUser);
+                    if (role)
+                    {
+                        await _userManager.AddToRoleAsync(user, DefaultRoles.ApplicationUser);
+                    }
+                    else
+                    {
+                        await _userManager.AddToRoleAsync(user, DefaultRoles.DefaultUser);
+                    }
+
                     // save the provider
                     result = await _userManager.AddLoginAsync(user, info);
                     if (result.Succeeded)
@@ -97,9 +109,13 @@ public class ExternalLogin : PageModel
                         if (Result.Succeeded)
                         {
                             await _emailSender.SendWelcome(email);
-                            if (user.PhoneNumber is null || user.PhoneNumberConfirmed is false)
+                            if (user.PhoneNumber is null || user.NormalizedEmail == user.NormalizedUserName)
                             {
-                                return RedirectToPage("/ConfigPhone", new { ReturnUrl });
+                                return RedirectToPage("/QuickStartProfile", new { ReturnUrl });
+                            }
+                            else if (user.PhoneNumberConfirmed)
+                            {
+                                return RedirectToPage("/ConfirmPhone", new { ReturnUrl });
                             }
                             else
                             {
@@ -137,33 +153,53 @@ public class ExternalLogin : PageModel
             }
             else
             {
-                // User already have and account
-                var result = await _signInManager.ExternalLoginSignInAsync(info.LoginProvider, info.ProviderKey, isPersistent: false);
-                if (result.Succeeded)
+                if (user.Status != UserStatus.Active)
                 {
-
-                    if (user.PhoneNumber is null || user.PhoneNumberConfirmed is false)
-                    {
-                        return RedirectToPage("/ConfigPhone", new { ReturnUrl });
-                    }
-                    else
-                    {
-                        return new RedirectResult(ReturnUrl);
-                    }
-
-                }
-                else if (result.IsNotAllowed)
-                {
-                    // If account is not verified
-                    Error = "Debes verificar tu cuenta, por favor revisa tu correo electronico";
-                    AllowBack = true;
+                    Error = $"La cuenta '{user.Email}' no está activa. Comunicate con soporte";
                     return Page();
                 }
                 else
                 {
-                    Error = $"Se produjo un error al obtener tus datos de {info.ProviderDisplayName}.";
-                    AllowBack = true;
-                    return Page();
+                    // If user uses two factor, redirect to it
+                    if (user.TwoFactorEnabled)
+                    {
+                        return RedirectToPage("/TwoFactor", new { ReturnUrl });
+                    }
+                    else
+                    {
+                        // User already have and account
+                        var result = await _signInManager.ExternalLoginSignInAsync(info.LoginProvider, info.ProviderKey, isPersistent: false);
+                        if (result.Succeeded)
+                        {
+
+                            if (user.PhoneNumber is null || user.NormalizedEmail == user.NormalizedUserName)
+                            {
+                                return RedirectToPage("/QuickStartProfile", new { ReturnUrl });
+                            }
+                            else if (user.PhoneNumberConfirmed)
+                            {
+                                return RedirectToPage("/ConfirmPhone", new { ReturnUrl });
+                            }
+                            else
+                            {
+                                return new RedirectResult(ReturnUrl);
+                            }
+
+                        }
+                        else if (result.IsNotAllowed)
+                        {
+                            // If account is not verified
+                            Error = "Debes verificar tu cuenta, por favor revisa tu correo electronico";
+                            AllowBack = true;
+                            return Page();
+                        }
+                        else
+                        {
+                            Error = $"Se produjo un error al obtener tus datos de {info.ProviderDisplayName}.";
+                            AllowBack = true;
+                            return Page();
+                        }
+                    }
                 }
             }
         }

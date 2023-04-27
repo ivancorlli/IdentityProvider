@@ -51,7 +51,6 @@ public class UserProfileConfiguration : IEntityTypeConfiguration<UserProfile>
             nav.OwnsOne(x => x.Phone, n =>
             {
                 n.Property(x => x.Number).HasColumnType("VARCHAR").HasMaxLength(15);
-                n.Property(x => x.AreaCode).HasColumnType("VARCHAR").HasMaxLength(10);
                 n.Property(x => x.CountryCode).HasColumnType("VARCHAR").HasMaxLength(5);
                 n.Property(x => x.CountryPrefix).HasColumnType("VARCHAR").HasMaxLength(5);
             });
