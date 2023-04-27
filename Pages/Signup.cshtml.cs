@@ -52,18 +52,15 @@ namespace IdentityProvider.Pages
             if (ModelState.IsValid)
             {
                 // Create a new user and give him some credentials, it's very important to initialize it with false for 'IsAuthenticatedExternaly', It's set TwoFactor authentication enabled for default.
-				var user = new ApplicationUser(false) { 
-                    Email = Register.Email.Trim(), 
-                    UserName = Register.Email.ToLower().Trim(),
-                    };
-                var result = await _userManager.CreateAsync(user, Register.Password);
+				ApplicationUser user = ApplicationUser.CreateLocalUser(Register.Email);
+                IdentityResult result = await _userManager.CreateAsync(user, Register.Password);
                 if (result.Succeeded)
                 {
-                    var UserId = await _userManager.GetUserIdAsync(user);
-                    var Code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+                    string UserId = await _userManager.GetUserIdAsync(user);
+                    string Code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
                     Code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(Code));
-                    var Exp = DateTimeOffset.UtcNow.AddMinutes(5).ToUnixTimeSeconds();
-                    var callback = Url.Page(
+                    long Exp = DateTimeOffset.UtcNow.AddMinutes(5).ToUnixTimeSeconds();
+                    string callback = Url.Page(
                         pageName: "/ConfirmEmail",
                         pageHandler: null,
                         values: new
@@ -74,8 +71,8 @@ namespace IdentityProvider.Pages
                             Exp = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(Exp.ToString())),
                         },
                         protocol: Request.Scheme
-                        );
-                    await _emailSender.SendWelcome(user.Email.ToString());
+                        )!;
+                    await _emailSender.SendWelcome(user.Email!.ToString());
                     await _emailSender.SendConfirmationEmail(user.Email.ToString(), callback!); ;
                     ModelState.Clear();
                     return RedirectToPage("/SignupConfirmation", new { Email = user.Email.ToString(), ReturnUrl });

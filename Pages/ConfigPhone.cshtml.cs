@@ -1,49 +1,63 @@
-using System.Security.Cryptography.X509Certificates;
-using System.Text;
 using IdentityProvider.Entity;
 using IdentityProvider.Pages.Model;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.AspNetCore.WebUtilities;
 
 namespace IdentityProvider.Pages
 {
     public class ConfigPhone : PageModel
     {
         [BindProperty]
-        public ConfigPhoneModel PhoneModel {get;set;} = new();
+        public ConfigPhoneModel PhoneModel { get; set; } = new();
 
         private readonly UserManager<ApplicationUser> _userManager;
-        public string ReturnUrl {get;set;} = string.Empty;
-        public string Error {get;set;} = string.Empty;
-    
+        public string ReturnUrl { get; set; } = string.Empty;
+        public string Error { get; set; } = string.Empty;
+
         public ConfigPhone(UserManager<ApplicationUser> userManager)
         {
             _userManager = userManager;
         }
 
-        public IActionResult OnGet(string ue,string returnUrl)
+        [Authorize()]
+        public async Task<IActionResult> OnGetAsync(string returnUrl)
         {
-            if(
-                string.IsNullOrEmpty(returnUrl)||
-                string.IsNullOrEmpty(ue)
+            if (
+                string.IsNullOrEmpty(returnUrl)
             )
             {
                 return Redirect("/Signin");
-            }else {
-                ReturnUrl = returnUrl;
-                return Page();
             }
+            else
+            {
+                ReturnUrl = returnUrl;
+            }
+
+            // var auth = await HttpContext.AuthenticateAsync(IdentityConstants.ApplicationScheme);
+            // if(auth.Succeeded)
+            // {
+                 return Page();
+            // }else {
+            //     return RedirectToPage("/Signin", new {ReturnUrl});
+            // }
+            
         }
 
 
-        public async void OnPost(string ue,string returnUrl)
+        [Authorize()]
+        public async Task<IActionResult> OnPost(string returnUrl)
         {
-            var userId = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(ue));
-            var user = await _userManager.FindByIdAsync(userId);
-            var x = await _userManager.GenerateTwoFactorTokenAsync(user!,"Phone");
-            
+            var auth = await HttpContext.AuthenticateAsync(IdentityConstants.ApplicationScheme);
+            if(auth.Succeeded)
+            {
+                return Page();
+            }else {
+                return RedirectToPage("/Signin", new {ReturnUrl});
+            }
+
         }
     }
 }

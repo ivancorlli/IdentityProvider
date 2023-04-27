@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace IdentityProvider.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20230426185229_Init")]
+    [Migration("20230426234407_Init")]
     partial class Init
     {
         /// <inheritdoc />
@@ -71,8 +71,8 @@ namespace IdentityProvider.Migrations
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("tinyint(1)");
 
-                    b.Property<sbyte>("IsAuthenticatedExternaly")
-                        .HasColumnType("TINYINT");
+                    b.Property<bool>("IsAuthenticatedExternaly")
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<bool>("LockoutEnabled")
                         .HasColumnType("tinyint(1)");

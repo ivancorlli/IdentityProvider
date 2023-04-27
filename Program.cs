@@ -5,6 +5,7 @@ using IdentityProvider.Interface;
 using IdentityProvider.Options;
 using IdentityProvider.Repo;
 using IdentityProvider.Seed;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;

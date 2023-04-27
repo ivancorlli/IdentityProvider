@@ -68,8 +68,8 @@ namespace IdentityProvider.Migrations
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("tinyint(1)");
 
-                    b.Property<sbyte>("IsAuthenticatedExternaly")
-                        .HasColumnType("TINYINT");
+                    b.Property<bool>("IsAuthenticatedExternaly")
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<bool>("LockoutEnabled")
                         .HasColumnType("tinyint(1)");

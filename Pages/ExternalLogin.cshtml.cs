@@ -64,112 +64,58 @@ public class ExternalLogin : PageModel
             Error = $"Error del provedor: {remoteError}";
             return Page();
         }
-        var info = await _signInManager.GetExternalLoginInfoAsync();
+        // Gets information about exteranl provider
+        ExternalLoginInfo? info = await _signInManager.GetExternalLoginInfoAsync();
         if (info == null)
         {
-            Error = "Se produjo un error al obtener tus datos.";
-            return Page();
-        }
-
-        // Initiliaze the user with the social provider
-        var result = await _signInManager.ExternalLoginSignInAsync(info.LoginProvider, info.ProviderKey, isPersistent: false, bypassTwoFactor: true);
-        if (result.Succeeded)
-        {
-            var user = await _userManager.FindByEmailAsync(info.Principal.FindFirstValue(ClaimTypes.Email)!);
-            // If user exists redirect to the correspond page 
-            if (user is not null)
-            {
-                if (user.PhoneNumber is null || user.PhoneNumberConfirmed is false)
-                {
-                    return RedirectToPage("/ConfigPhone", new { ReturnUrl });
-                }
-                else
-                {
-                    return new RedirectResult(ReturnUrl);
-                }
-            }
-            else
-            {
-                // If user doesn't exists return an error
-                Error = "Se produjo un erro al obtener tus datos.";
-                return Page();
-            }
-        }
-        else if (result.IsNotAllowed)
-        {
-            // If account is not verified
-            Error = "Debes verificar tu cuenta, por favor revisa tu correo electronico";
-            AllowBack = true;
-            return Page();
-        }
-        else
-        {
-            var email = info.Principal.FindFirstValue(ClaimTypes.Email);
-            // If exists an email
-            if (email != null)
-            {
-                return await CreateUser(ReturnUrl);
-            }
-            else
-            {
-                // If there is not an email, return an error
-                Error = $"Se produjo un error al obtener tus datos de {info.ProviderDisplayName}.";
-                AllowBack = true;
-                return Page();
-            }
-        }
-    }
-
-    private async Task<IActionResult> CreateUser(string returnUrl)
-    {
-        // Obtenemos la informacion de login del usuario
-        var info = await _signInManager.GetExternalLoginInfoAsync();
-        if (info == null)
-        {
-            // Error al obtener  el provedor
+            // If tehre is not information, return an error
             Error = "Se produjo un error al obtener tus datos.";
             return Page();
         }
         else
         {
-            // Obttenemos el email de los claims
+            // Get Email claim
             string email = info.Principal.FindFirstValue(ClaimTypes.Email)!;
-            // Buscamos si el email ya ha sido registrado
-            ApplicationUser? user = await _userManager.FindByEmailAsync(email!);
-            // Si el usuario no existe
+            // Search if user is already registered with this provider
+            ApplicationUser? user = await _userLogin.FindByLoginAsync(info.LoginProvider, info.ProviderKey, CancellationToken.None);
+
+            // IF user is not registered
             if (user == null)
             {
-                // Creamos un nuevo usuario
-                user = new ApplicationUser(true)
-                {
-                    Email = email,
-                    UserName = email,
-                    EmailConfirmed = true
-                };
-                // Guardamos en la base
+                // Create a new external account
+                user = ApplicationUser.CreateExternalUser(email);
+                // save in database
                 var result = await _userManager.CreateAsync(user);
-                // Si el resultado es exitoso
                 if (result.Succeeded)
                 {
-                    // Guardamos el provedor
+                    // save the provider
                     result = await _userManager.AddLoginAsync(user, info);
-                    // Si el resultado es exitoso
                     if (result.Succeeded)
                     {
-                        await _signInManager.ExternalLoginSignInAsync(info.LoginProvider, info.ProviderKey, isPersistent: false, bypassTwoFactor: true);
-                        await _emailSender.SendWelcome(user.Email!.ToString());
-                        if (user.PhoneNumber is null || user.PhoneNumberConfirmed is false)
+                        var Result = await _signInManager.ExternalLoginSignInAsync(info.LoginProvider, info.ProviderKey, isPersistent: false);
+
+                        if (Result.Succeeded)
                         {
-                            return RedirectToPage("/ConfigPhone", new { ReturnUrl = returnUrl });
+                            await _emailSender.SendWelcome(email);
+                            if (user.PhoneNumber is null || user.PhoneNumberConfirmed is false)
+                            {
+                                return RedirectToPage("/ConfigPhone", new { ReturnUrl });
+                            }
+                            else
+                            {
+                                return new RedirectResult(ReturnUrl);
+                            }
                         }
                         else
                         {
-                            return new RedirectResult(returnUrl);
+                            Error = $"Se produjo un error al obtener tus datos de {info.ProviderDisplayName}.";
+                            AllowBack = true;
+                            return Page();
                         }
                     }
                     else
                     {
-                        // Errores al agreagar proveedor
+                        // if there is any error saving the provider
                         foreach (var error in result.Errors)
                         {
                             Error = error.Description;
@@ -180,7 +126,7 @@ public class ExternalLogin : PageModel
                 }
                 else
                 {
-                    // Errores al crear
+                    // Errors creating user
                     foreach (var error in result.Errors)
                     {
                         Error = error.Description;
@@ -191,88 +137,38 @@ public class ExternalLogin : PageModel
             }
             else
             {
-                // Si el usuario ya ha sido registrado
-
-                // Buscamos los proveedores
-                var providers = await _userLogin.GetLoginsAsync(user, CancellationToken.None);
-                var exists = providers.Where(x => x.LoginProvider == info.LoginProvider).ToList();
-                if (exists.Count > 0)
+                // User already have and account
+                var result = await _signInManager.ExternalLoginSignInAsync(info.LoginProvider, info.ProviderKey, isPersistent: false);
+                if (result.Succeeded)
                 {
-                    await _signInManager.ExternalLoginSignInAsync(info.LoginProvider, info.ProviderKey, isPersistent: false, bypassTwoFactor: true);
+
                     if (user.PhoneNumber is null || user.PhoneNumberConfirmed is false)
                     {
-                        return RedirectToPage("/ConfigPhone", new { ReturnUrl = returnUrl });
+                        return RedirectToPage("/ConfigPhone", new { ReturnUrl });
                     }
                     else
                     {
-                        return new RedirectResult(returnUrl);
+                        return new RedirectResult(ReturnUrl);
                     }
+
+                }
+                else if (result.IsNotAllowed)
+                {
+                    // If account is not verified
+                    Error = "Debes verificar tu cuenta, por favor revisa tu correo electronico";
+                    AllowBack = true;
+                    return Page();
                 }
                 else
                 {
-                    // Agreagamos el login
-                    var result = await _userManager.AddLoginAsync(user, info);
-                    if (result.Succeeded)
-                    {
-                        // Si el email esta confirmado
-                        if (user.EmailConfirmed)
-                        {
-                            // Inciamos sesion
-                            var login = await _signInManager.ExternalLoginSignInAsync(info.LoginProvider, info.ProviderKey, isPersistent: false, bypassTwoFactor: true);
-                            if (login.Succeeded)
-                            {
-                                return Redirect(returnUrl);
-                            }
-                            else if (login.IsNotAllowed)
-                            {
-                                Error = "Debes verificar tu cuenta, por favor revisa tu correo electronico";
-                                AllowBack = true;
-                                return Page();
-                            }
-                            else
-                            {
-                                Error = "No pudimos completar tu ingreso";
-                                return Page();
-                            }
-                        }
-                        else
-                        {
-                            // Si el email no esta confirmado, le enviamos una solicitud de verificacion
-                            var userId = await _userManager.GetUserIdAsync(user);
-                            var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-                            code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
-                            var exp = DateTimeOffset.UtcNow.AddMinutes(5).ToUnixTimeSeconds();
-                            var callback = Url.Page(
-                                pageName: "/ConfirmEmail",
-                                pageHandler: null,
-                                values: new
-                                {
-                                    UserId = userId,
-                                    Code = code,
-                                    ReturnUrl = returnUrl,
-                                    Exp = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(exp.ToString())),
-                                },
-                                protocol: Request.Scheme
-                                );
-                            await _emailSender.SendConfirmationEmail(user.Email!.ToString(), callback!);
-                            return RedirectToPage("/SignupConfirmation", new { email = user.Email, ReturnUrl = returnUrl });
-                        }
-                    }
-                    else
-                    {
-                        foreach (var error in result.Errors)
-                        {
-                            Error = error.Description;
-                            break;
-                        }
-                        return Page();
-                    }
-
+                    Error = $"Se produjo un error al obtener tus datos de {info.ProviderDisplayName}.";
+                    AllowBack = true;
+                    return Page();
                 }
             }
         }
-
     }
+
     public IActionResult OnPostToSignIn(string url)
     {
         return RedirectToPage("/Signin", new { ReturnUrl = url });

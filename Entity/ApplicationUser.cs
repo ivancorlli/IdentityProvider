@@ -6,13 +6,11 @@ namespace IdentityProvider.Entity
 {
     public class ApplicationUser : IdentityUser
     {
-        public UserStatus Status { get; private set; }
-        public UserProfile? Profile { get; private set; }
-        public IEnumerable<Access> Permissions => _permissions;
-
+        public UserStatus Status { get; private set; } = default!;
         // It distiguish between users that have been authenticated by a Social Provider, they are not going to use two factor, becouse theirs provider is already implenenting it.
-        public bool IsAuthenticatedExternaly {get;private set;}
-
+        public bool IsAuthenticatedExternaly {get;private set;} = default!;
+        public IEnumerable<Access> Permissions => _permissions;
+        public UserProfile? Profile { get; private set; }
         // OWn Config //
         private List<Access> _permissions {get; set; } = new List<Access>();
         // End Config//
@@ -28,6 +26,45 @@ namespace IdentityProvider.Entity
                 TwoFactorEnabled = true;
             }
             Status = UserStatus.Active;
+        }
+
+        public static ApplicationUser CreateExternalUser(string email)
+        {
+            var newUser = new ApplicationUser
+            {
+                Email = email,
+                EmailConfirmed = true,
+                UserName =email,
+                IsAuthenticatedExternaly = true,
+                TwoFactorEnabled = false
+            };
+            return newUser;
+        }
+
+        public static ApplicationUser CreateExternalUser(string email,string phone)
+        {
+            var newUser = new ApplicationUser
+            {
+                Email = email,
+                EmailConfirmed = true,
+                UserName =email,
+                IsAuthenticatedExternaly = true,
+                TwoFactorEnabled = false,
+                PhoneNumber = phone,
+                PhoneNumberConfirmed =true
+            };
+            return newUser;
+        }
+
+        public static ApplicationUser CreateLocalUser(string email)
+        {
+            var newUser = new ApplicationUser {
+                Email = email,
+                UserName = email,
+                IsAuthenticatedExternaly = false,
+                TwoFactorEnabled = true
+            };
+            return newUser;
         }
 
         /// <summary>

@@ -23,7 +23,7 @@ namespace IdentityProvider.Context
 			// User
 			builder.Entity<ApplicationUser>().Property(x=>x.Status)
 				.HasConversion(x => x.ToString(), x => (UserStatus)Enum.Parse(typeof(UserStatus), x));
-			builder.Entity<ApplicationUser>().Property(x=>x.IsAuthenticatedExternaly).HasColumnType("TINYINT");
+			builder.Entity<ApplicationUser>().Property(x=>x.IsAuthenticatedExternaly).IsRequired();
 			builder.Entity<ApplicationUser>().HasMany(x=>x.Permissions).WithOne().HasForeignKey(x=>x.ResourceId);
 			// Role
 			builder.Entity<ApplicationRole>().Property(x=>x.Type)
