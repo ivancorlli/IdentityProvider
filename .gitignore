@@ -476,9 +476,12 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 
-./Bundle/
-./Bundle
-Bundle
+./Migrations/Bundle/
+Migrations/Bundle
+
+./Migrations/scripts/
+Migrations/scripts
+
 Key
 /Key
 ./Key

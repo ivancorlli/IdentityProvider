@@ -1,8 +1,9 @@
-using IdentityProvider.Constant;
+using System.Security.Claims;
 using IdentityProvider.Context;
 using IdentityProvider.Entity;
 using IdentityProvider.Helper;
 using IdentityProvider.Interface;
+using IdentityProvider.Manager;
 using IdentityProvider.Options;
 using IdentityProvider.Repo;
 using IdentityProvider.Seed;
@@ -20,6 +21,7 @@ Services.AddScoped<IEmailSender, EmailSender>();
 Services.AddScoped<ISmsSender, SmsSender>();
 Services.Configure<EmailerOptions>(options => builder.Configuration.GetSection("EmailSettings").Bind(options));
 Services.Configure<ReturnUrlOptions>(options => builder.Configuration.GetSection("ReturnUrl").Bind(options));
+Services.AddScoped<ApplicationManager>();
 
 // Add services to the container.
 Services.AddRazorPages();
@@ -86,6 +88,8 @@ Services.AddAuthentication()
             opts.ClientId = builder.Configuration["Authentication:Google:ClientId"]!;
             opts.ClientSecret = builder.Configuration["Authentication:Google:Secret"]!;
             opts.SignInScheme = IdentityConstants.ExternalScheme;
+            opts.ClaimActions.MapJsonKey(ClaimTypes.Locality, "locale");
+            opts.ClaimActions.MapJsonKey("image", "picture");
         })
     .AddFacebook(opts =>
         {

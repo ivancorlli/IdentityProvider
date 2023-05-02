@@ -1,7 +1,8 @@
 namespace IdentityProvider.Enumerables;
 
-public enum UserGender
+public enum UserGender:byte
 {
-    Male = 0,
-    Female = 1,
+    None=0,
+    Male = 1,
+    Female = 2,
 }

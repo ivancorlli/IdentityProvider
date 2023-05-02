@@ -6,8 +6,17 @@ namespace IdentityProvider.Constant;
 
 public class DefaultRoles
 {
-    public static string DefaultUser => "ApplicationDefaultUser";
-    public static string ApplicationUser => "ApplicationUser";
-    public static string IdentityAdmin => "ProviderAdmin";
+    /// <summary>
+    /// DefaultUser
+    /// </summary>
+    public const string DefaultUser = "DefaultUser";
+    /// <summary>
+    /// ApplicationUser
+    /// </summary>
+    public const string ApplicationUser = "ApplicationUser";
+    /// <summary>
+    /// ProviderAdmin
+    /// </summary>
+    public const string IdentityAdmin = "ProviderAdmin";
 
 }

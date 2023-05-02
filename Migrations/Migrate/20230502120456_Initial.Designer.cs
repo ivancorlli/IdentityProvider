@@ -8,11 +8,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace IdentityProvider.Migrations
+namespace IdentityProvider.Migrations.Migrate
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20230427135522_PhoneContactChanged")]
-    partial class PhoneContactChanged
+    [Migration("20230502120456_Initial")]
+    partial class Initial
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -41,7 +41,8 @@ namespace IdentityProvider.Migrations
 
                     b.Property<string>("Type")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasMaxLength(25)
+                        .HasColumnType("VARCHAR");
 
                     b.HasKey("Id");
 
@@ -97,8 +98,8 @@ namespace IdentityProvider.Migrations
                     b.Property<bool>("PhoneNumberConfirmed")
                         .HasColumnType("tinyint(1)");
 
-                    b.Property<string>("ProfileId")
-                        .HasColumnType("varchar(255)");
+                    b.Property<bool>("PhoneTwoFactorEnabled")
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("longtext");
@@ -123,8 +124,6 @@ namespace IdentityProvider.Migrations
                         .IsUnique()
                         .HasDatabaseName("UserNameIndex");
 
-                    b.HasIndex("ProfileId");
-
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
@@ -148,17 +147,26 @@ namespace IdentityProvider.Migrations
 
             modelBuilder.Entity("IdentityProvider.Entity.UserProfile", b =>
                 {
-                    b.Property<string>("Id")
+                    b.Property<string>("UserId")
                         .HasColumnType("varchar(255)");
 
-                    b.Property<DateTime>("Birth")
-                        .HasColumnType("date");
+                    b.Property<DateTime?>("Birth")
+                        .HasColumnType("DATE");
 
-                    b.Property<string>("Gender")
-                        .IsRequired()
-                        .HasColumnType("longtext");
+                    b.Property<byte>("Gender")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0);
 
-                    b.HasKey("Id");
+                    b.Property<string>("LandscapePicture")
+                        .HasMaxLength(250)
+                        .HasColumnType("VARCHAR");
+
+                    b.Property<string>("ProfilePicture")
+                        .HasMaxLength(250)
+                        .HasColumnType("VARCHAR");
+
+                    b.HasKey("UserId");
 
                     b.ToTable("Profile", (string)null);
                 });
@@ -502,15 +510,6 @@ namespace IdentityProvider.Migrations
                     b.ToTable("OpenIddictTokens", (string)null);
                 });
 
-            modelBuilder.Entity("IdentityProvider.Entity.ApplicationUser", b =>
-                {
-                    b.HasOne("IdentityProvider.Entity.UserProfile", "Profile")
-                        .WithMany()
-                        .HasForeignKey("ProfileId");
-
-                    b.Navigation("Profile");
-                });
-
             modelBuilder.Entity("IdentityProvider.Entity.Permission", b =>
                 {
                     b.OwnsOne("IdentityProvider.ValueObject.TimeStamp", "TimeStamp", b1 =>
@@ -538,9 +537,15 @@ namespace IdentityProvider.Migrations
 
             modelBuilder.Entity("IdentityProvider.Entity.UserProfile", b =>
                 {
+                    b.HasOne("IdentityProvider.Entity.ApplicationUser", null)
+                        .WithOne("Profile")
+                        .HasForeignKey("IdentityProvider.Entity.UserProfile", "UserId")
+                        .OnDelete(DeleteBehavior.ClientCascade)
+                        .IsRequired();
+
                     b.OwnsOne("IdentityProvider.ValueObject.PersonName", "Name", b1 =>
                         {
-                            b1.Property<string>("UserProfileId")
+                            b1.Property<string>("UserProfileUserId")
                                 .HasColumnType("varchar(255)");
 
                             b1.Property<string>("FirstName")
@@ -558,17 +563,17 @@ namespace IdentityProvider.Migrations
                                 .HasMaxLength(50)
                                 .HasColumnType("VARCHAR");
 
-                            b1.HasKey("UserProfileId");
+                            b1.HasKey("UserProfileUserId");
 
                             b1.ToTable("Profile");
 
                             b1.WithOwner()
-                                .HasForeignKey("UserProfileId");
+                                .HasForeignKey("UserProfileUserId");
                         });
 
                     b.OwnsOne("IdentityProvider.ValueObject.TimeStamp", "TimeStamp", b1 =>
                         {
-                            b1.Property<string>("UserProfileId")
+                            b1.Property<string>("UserProfileUserId")
                                 .HasColumnType("varchar(255)");
 
                             b1.Property<long>("CreatedAt")
@@ -577,17 +582,17 @@ namespace IdentityProvider.Migrations
                             b1.Property<long>("UpdatedAt")
                                 .HasColumnType("BIGINT");
 
-                            b1.HasKey("UserProfileId");
+                            b1.HasKey("UserProfileUserId");
 
                             b1.ToTable("Profile");
 
                             b1.WithOwner()
-                                .HasForeignKey("UserProfileId");
+                                .HasForeignKey("UserProfileUserId");
                         });
 
                     b.OwnsOne("IdentityProvider.ValueObject.Address", "Address", b1 =>
                         {
-                            b1.Property<string>("UserProfileId")
+                            b1.Property<string>("UserProfileUserId")
                                 .HasColumnType("varchar(255)");
 
                             b1.Property<string>("City")
@@ -616,17 +621,17 @@ namespace IdentityProvider.Migrations
                                 .HasMaxLength(10)
                                 .HasColumnType("VARCHAR");
 
-                            b1.HasKey("UserProfileId");
+                            b1.HasKey("UserProfileUserId");
 
                             b1.ToTable("Profile");
 
                             b1.WithOwner()
-                                .HasForeignKey("UserProfileId");
+                                .HasForeignKey("UserProfileUserId");
                         });
 
                     b.OwnsOne("IdentityProvider.ValueObject.Bio", "Bio", b1 =>
                         {
-                            b1.Property<string>("UserProfileId")
+                            b1.Property<string>("UserProfileUserId")
                                 .HasColumnType("varchar(255)");
 
                             b1.Property<string>("Value")
@@ -634,33 +639,34 @@ namespace IdentityProvider.Migrations
                                 .HasMaxLength(350)
                                 .HasColumnType("VARCHAR");
 
-                            b1.HasKey("UserProfileId");
+                            b1.HasKey("UserProfileUserId");
 
                             b1.ToTable("Profile");
 
                             b1.WithOwner()
-                                .HasForeignKey("UserProfileId");
+                                .HasForeignKey("UserProfileUserId");
                         });
 
                     b.OwnsOne("IdentityProvider.ValueObject.EmergencyContact", "EmergencyContact", b1 =>
                         {
-                            b1.Property<string>("UserProfileId")
+                            b1.Property<string>("UserProfileUserId")
                                 .HasColumnType("varchar(255)");
 
                             b1.Property<string>("RelationShip")
                                 .IsRequired()
-                                .HasColumnType("longtext");
+                                .HasMaxLength(25)
+                                .HasColumnType("VARCHAR");
 
-                            b1.HasKey("UserProfileId");
+                            b1.HasKey("UserProfileUserId");
 
                             b1.ToTable("Profile");
 
                             b1.WithOwner()
-                                .HasForeignKey("UserProfileId");
+                                .HasForeignKey("UserProfileUserId");
 
                             b1.OwnsOne("IdentityProvider.ValueObject.ContactPhone", "Phone", b2 =>
                                 {
-                                    b2.Property<string>("EmergencyContactUserProfileId")
+                                    b2.Property<string>("EmergencyContactUserProfileUserId")
                                         .HasColumnType("varchar(255)");
 
                                     b2.Property<string>("CountryCode")
@@ -678,17 +684,17 @@ namespace IdentityProvider.Migrations
                                         .HasMaxLength(15)
                                         .HasColumnType("VARCHAR");
 
-                                    b2.HasKey("EmergencyContactUserProfileId");
+                                    b2.HasKey("EmergencyContactUserProfileUserId");
 
                                     b2.ToTable("Profile");
 
                                     b2.WithOwner()
-                                        .HasForeignKey("EmergencyContactUserProfileId");
+                                        .HasForeignKey("EmergencyContactUserProfileUserId");
                                 });
 
                             b1.OwnsOne("IdentityProvider.ValueObject.PersonName", "Name", b2 =>
                                 {
-                                    b2.Property<string>("EmergencyContactUserProfileId")
+                                    b2.Property<string>("EmergencyContactUserProfileUserId")
                                         .HasColumnType("varchar(255)");
 
                                     b2.Property<string>("FirstName")
@@ -706,12 +712,12 @@ namespace IdentityProvider.Migrations
                                         .HasMaxLength(50)
                                         .HasColumnType("VARCHAR");
 
-                                    b2.HasKey("EmergencyContactUserProfileId");
+                                    b2.HasKey("EmergencyContactUserProfileUserId");
 
                                     b2.ToTable("Profile");
 
                                     b2.WithOwner()
-                                        .HasForeignKey("EmergencyContactUserProfileId");
+                                        .HasForeignKey("EmergencyContactUserProfileUserId");
                                 });
 
                             b1.Navigation("Name")
@@ -721,27 +727,9 @@ namespace IdentityProvider.Migrations
                                 .IsRequired();
                         });
 
-                    b.OwnsOne("IdentityProvider.ValueObject.Images", "Pictures", b1 =>
-                        {
-                            b1.Property<string>("UserProfileId")
-                                .HasColumnType("varchar(255)");
-
-                            b1.Property<string>("ProfilePicture")
-                                .IsRequired()
-                                .HasMaxLength(250)
-                                .HasColumnType("VARCHAR");
-
-                            b1.HasKey("UserProfileId");
-
-                            b1.ToTable("Profile");
-
-                            b1.WithOwner()
-                                .HasForeignKey("UserProfileId");
-                        });
-
                     b.OwnsOne("IdentityProvider.ValueObject.MedicalInfo", "Medical", b1 =>
                         {
-                            b1.Property<string>("UserProfileId")
+                            b1.Property<string>("UserProfileUserId")
                                 .HasColumnType("varchar(255)");
 
                             b1.Property<string>("Aptitude")
@@ -754,16 +742,15 @@ namespace IdentityProvider.Migrations
                                 .HasMaxLength(100)
                                 .HasColumnType("VARCHAR");
 
-                            b1.HasKey("UserProfileId");
+                            b1.HasKey("UserProfileUserId");
 
                             b1.ToTable("Profile");
 
                             b1.WithOwner()
-                                .HasForeignKey("UserProfileId");
+                                .HasForeignKey("UserProfileUserId");
                         });
 
-                    b.Navigation("Address")
-                        .IsRequired();
+                    b.Navigation("Address");
 
                     b.Navigation("Bio");
 
@@ -774,8 +761,6 @@ namespace IdentityProvider.Migrations
                     b.Navigation("Name")
                         .IsRequired();
 
-                    b.Navigation("Pictures");
-
                     b.Navigation("TimeStamp")
                         .IsRequired();
                 });
@@ -785,11 +770,13 @@ namespace IdentityProvider.Migrations
                     b.HasOne("IdentityProvider.Entity.Permission", null)
                         .WithMany()
                         .HasForeignKey("PermissionId")
+                        .OnDelete(DeleteBehavior.ClientCascade)
                         .IsRequired();
 
                     b.HasOne("IdentityProvider.Entity.ApplicationUser", null)
                         .WithMany("Permissions")
                         .HasForeignKey("ResourceId")
+                        .OnDelete(DeleteBehavior.ClientCascade)
                         .IsRequired();
                 });
 
@@ -871,6 +858,8 @@ namespace IdentityProvider.Migrations
             modelBuilder.Entity("IdentityProvider.Entity.ApplicationUser", b =>
                 {
                     b.Navigation("Permissions");
+
+                    b.Navigation("Profile");
                 });
 
             modelBuilder.Entity("OpenIddict.EntityFrameworkCore.Models.OpenIddictEntityFrameworkCoreApplication", b =>

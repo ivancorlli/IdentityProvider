@@ -1,7 +1,6 @@
 using IdentityProvider.Constant;
 using IdentityProvider.Context;
 using IdentityProvider.Entity;
-using IdentityProvider.Enumerables;
 using Microsoft.AspNetCore.Identity;
 
 namespace IdentityProvider.Seed;
@@ -23,19 +22,19 @@ public class SeedRoles : IHostedService
 
         if(!await manager.RoleExistsAsync(DefaultRoles.DefaultUser))
         {
-            await manager.CreateAsync(new ApplicationRole(DefaultRoles.DefaultUser,RoleTypes.ApplicationRole));
+            await manager.CreateAsync(new ApplicationRole(DefaultRoles.DefaultUser,RolType.ApplicationRole));
         }
 
 
 
         if(!await manager.RoleExistsAsync(DefaultRoles.ApplicationUser))
         {
-            await manager.CreateAsync(new ApplicationRole(DefaultRoles.ApplicationUser,RoleTypes.ApplicationRole));
+            await manager.CreateAsync(new ApplicationRole(DefaultRoles.ApplicationUser,RolType.ApplicationRole));
         }
 
         if(!await manager.RoleExistsAsync(DefaultRoles.IdentityAdmin))
         {
-            await manager.CreateAsync(new ApplicationRole(DefaultRoles.IdentityAdmin,RoleTypes.ProviderRole));
+            await manager.CreateAsync(new ApplicationRole(DefaultRoles.IdentityAdmin,RolType.ProviderRole));
         }
     }
 

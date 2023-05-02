@@ -1,6 +1,6 @@
 namespace IdentityProvider.Enumerables;
 
-public enum UserStatus
+public enum UserStatus:byte
 {
     Active = 0,
     Inactive = 1,

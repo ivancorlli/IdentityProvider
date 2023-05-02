@@ -9,23 +9,20 @@ public class UserProfileConfiguration : IEntityTypeConfiguration<UserProfile>
 {
     public void Configure(EntityTypeBuilder<UserProfile> builder)
     {
-        builder.HasKey(x => x.Id);
+        builder.HasKey(x => x.UserId);
         builder.ToTable("Profile");
 
         // name
         builder.OwnsOne(x => x.Name, nav =>
         {
-            nav.Property(x => x.FirstName).HasColumnType("VARCHAR").HasMaxLength(25);
-            nav.Property(x => x.LastName).HasColumnType("VARCHAR").HasMaxLength(25);
-            nav.Property(x => x.NormalizeName).HasColumnType("VARCHAR").HasMaxLength(50);
+            nav.Property(x => x.FirstName).HasColumnType("VARCHAR").HasMaxLength(25).IsRequired();
+            nav.Property(x => x.LastName).HasColumnType("VARCHAR").HasMaxLength(25).IsRequired();
+            nav.Property(x => x.NormalizeName).HasColumnType("VARCHAR").HasMaxLength(50).IsRequired();
         });
         // gender
-        builder.Property(x => x.Gender)
-            .HasConversion(x => x.ToString(), x => (UserGender)Enum.Parse(typeof(UserGender), x)
-            );
+        builder.Property(x => x.Gender).HasDefaultValue(UserGender.None);
         // Birth
-        builder.Property(x => x.Birth)
-            .HasColumnType("date");
+        builder.Property(x => x.Birth).HasColumnType("DATE");
         // Address
         builder.OwnsOne(x => x.Address, nav =>
         {
@@ -45,8 +42,7 @@ public class UserProfileConfiguration : IEntityTypeConfiguration<UserProfile>
                 n.Property(x => x.NormalizeName).HasColumnType("VARCHAR").HasMaxLength(50);
             });
             // Relation
-            nav.Property(x => x.RelationShip)
-                 .HasConversion(x => x.ToString(), x => (RelationShip)Enum.Parse(typeof(RelationShip), x));
+            nav.Property(x => x.RelationShip).HasColumnType("VARCHAR").HasMaxLength(25);
             // Number
             nav.OwnsOne(x => x.Phone, n =>
             {
@@ -55,28 +51,25 @@ public class UserProfileConfiguration : IEntityTypeConfiguration<UserProfile>
                 n.Property(x => x.CountryPrefix).HasColumnType("VARCHAR").HasMaxLength(5);
             });
         });
-        //Images
-        builder.OwnsOne(x=> x.Pictures,nav=>{
-            nav.Property(x=>x.ProfilePicture).HasColumnType("VARCHAR").HasMaxLength(250);
-        });
         //Bio
         builder.OwnsOne(x => x.Bio, nav =>
         {
             nav.Property(x => x.Value).HasColumnType("VARCHAR").HasMaxLength(350);
         });
+        //Images
+
+        builder.Property(x => x.ProfilePicture).HasColumnType("VARCHAR").HasMaxLength(250).IsRequired(false);
+        builder.Property(x => x.LandscapePicture).HasColumnType("VARCHAR").HasMaxLength(250).IsRequired(false);
         // Medical
         builder.OwnsOne(x => x.Medical, nav =>
         {
             nav.Property(x => x.Aptitude)
                 .HasColumnType("VARCHAR")
                 .HasMaxLength(100)
-                .HasDefaultValue(null)
-                .IsRequired();
+                ;
             nav.Property(x => x.Disabilities)
                 .HasColumnType("VARCHAR")
-                .HasMaxLength(100)
-                .HasDefaultValue(null)
-                .IsRequired();
+                .HasMaxLength(100);
         });
         //TimeStamps
         builder.OwnsOne(x => x.TimeStamp, nav =>

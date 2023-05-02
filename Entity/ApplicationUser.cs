@@ -9,6 +9,7 @@ namespace IdentityProvider.Entity
         public UserStatus Status { get; private set; } = default!;
         // It distiguish between users that have been authenticated by a Social Provider, they are not going to use two factor, becouse theirs provider is already implenenting it.
         public bool IsAuthenticatedExternaly {get;private set;} = default!;
+        public bool PhoneTwoFactorEnabled {get;private set;} = default!;
         public IEnumerable<Access> Permissions => _permissions;
         public UserProfile? Profile { get; private set; }
         // OWn Config //
@@ -25,7 +26,7 @@ namespace IdentityProvider.Entity
                 EmailConfirmed = true,
                 UserName =email,
                 IsAuthenticatedExternaly = true,
-                TwoFactorEnabled = false
+                PhoneTwoFactorEnabled = false
             };
             return newUser;
         }
@@ -39,7 +40,7 @@ namespace IdentityProvider.Entity
                 EmailConfirmed = true,
                 UserName =email,
                 IsAuthenticatedExternaly = true,
-                TwoFactorEnabled = false,
+                PhoneTwoFactorEnabled = false,
                 PhoneNumber = phone,
                 PhoneNumberConfirmed =true
             };
@@ -53,7 +54,7 @@ namespace IdentityProvider.Entity
                 Email = email,
                 UserName = email,
                 IsAuthenticatedExternaly = false,
-                TwoFactorEnabled = true
+                PhoneTwoFactorEnabled = true
             };
             return newUser;
         }
@@ -62,14 +63,13 @@ namespace IdentityProvider.Entity
         /// Creates user profile
         /// </summary>
         /// <param name="name"></param>
-        /// <param name="gender"></param>
         // /// <param name="birth"></param>
-        public void CreateProfile(PersonName name, UserGender gender, DateTime birth)
+        public void CreateProfile(PersonName name)
         {
 
             if (Profile is null)
             {
-                var newProfile = new UserProfile(name, gender, birth);
+                var newProfile = new UserProfile(Id,name);
                 Profile = newProfile;
             }
         }

@@ -1,4 +1,3 @@
-
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using IdentityProvider.Constant;
@@ -13,7 +12,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 namespace IdentityProvider.Pages
 {
     [Authorize(AuthenticationSchemes = "Identity.Application", Roles = $"{DefaultRoles.ApplicationUser},{DefaultRoles.IdentityAdmin}")]
-    public class ConfirmPhone : PageModel
+    public class TwoFactor : PageModel
     {
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ISmsSender _smsSender;
@@ -28,7 +27,7 @@ namespace IdentityProvider.Pages
         public string ReturnUrl { get; set; } = string.Empty;
 
 
-        public ConfirmPhone(UserManager<ApplicationUser> userManager, ISmsSender smsSender)
+        public TwoFactor(UserManager<ApplicationUser> userManager, ISmsSender smsSender)
         {
             _userManager = userManager;
             _smsSender = smsSender;
@@ -45,14 +44,9 @@ namespace IdentityProvider.Pages
                 ApplicationUser? user = await _userManager.FindByIdAsync(userId);
                 if (user is not null)
                 {
-                    if (user.PhoneNumber is null || user.NormalizedUserName == user.NormalizedEmail) return RedirectToPage("/QuickStartProfile", new { ReturnUrl });
-                    else if (user.PhoneTwoFactorEnabled && user.PhoneNumberConfirmed) return RedirectToPage("/TwoFactor", new { ReturnUrl, Remember = false });
-                    else
-                    {
-                        var Code = await _userManager.GenerateChangePhoneNumberTokenAsync(user, user.PhoneNumber!);
-                        await _smsSender.PhoneConfirmation(user.Email!, Code);
-                        return Page();
-                    }
+                    var Code = await _userManager.GenerateChangePhoneNumberTokenAsync(user, user.PhoneNumber!);
+                    await _smsSender.PhoneConfirmation(user.Email!, Code);
+                    return Page();
                 }
                 else return RedirectToPage("/Signin", new { ReturnUrl });
             }

@@ -22,10 +22,17 @@ public class SmsSender : ISmsSender
 		};
 		_client = client;
     }
-    
-    public Task TwoFactorMessage(string Email,string Code)
+
+    public Task PhoneConfirmation(string PhoneNumber, string Code)
     {
-        _client.Send("noreplay@muver.com", Email,"Two Factor", $"{Code}");
+        _client.Send("noreplay@muver.com", PhoneNumber,"VerifyPhone", $"{Code}");
+
+		return Task.CompletedTask;
+    }
+
+    public Task TwoFactorMessage(string PhoneNumber,string Code)
+    {
+        _client.Send("noreplay@muver.com", PhoneNumber,"Two Factor", $"{Code}");
 
 		return Task.CompletedTask;
     }

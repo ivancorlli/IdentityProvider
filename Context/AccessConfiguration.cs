@@ -23,7 +23,7 @@ public class AccessConfiguration : IEntityTypeConfiguration<Access>
             .IsRequired();
         builder.Property(x=>x.CreatedAt).HasColumnType("BIGINT");
         
-        builder.HasOne<ApplicationUser>().WithMany(x=>x.Permissions).HasForeignKey(x=>x.ResourceId).OnDelete(DeleteBehavior.ClientSetNull);
-        builder.HasOne<Permission>().WithMany().HasForeignKey(x=>x.PermissionId).OnDelete(DeleteBehavior.ClientSetNull);
+        builder.HasOne<ApplicationUser>().WithMany(x=>x.Permissions).HasForeignKey(x=>x.ResourceId).OnDelete(DeleteBehavior.ClientCascade);
+        builder.HasOne<Permission>().WithMany().HasForeignKey(x=>x.PermissionId).OnDelete(DeleteBehavior.ClientCascade);
     }
 }

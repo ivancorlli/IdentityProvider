@@ -1,12 +1,12 @@
-@page "/ConfirmPhone"
-@model IdentityProvider.Pages.ConfirmPhone
+@page "/TwoFactor"
+@model IdentityProvider.Pages.TwoFactor
 @{
     ViewData["Title"] = "Confirmar número de telefono";
 }
 
 <div class="vh-100 row justify-content-center align-items-center">
     <div class="col col-md-4 justify-content-center">
-        <span class="fs'3 my-2">Verificar número de telefono</span>
+        <span class="fs'3 my-2">Ingresar codigo</span>
         @{
         if (!string.IsNullOrEmpty(Model.Error))
         {
@@ -22,7 +22,7 @@
                     <label asp-for="Code" class="form-label"></label>
                 </div>
                 <div>
-                    <button type="submit" class="btn btn-primary btn-block">Confirmar</button>
+                    <button type="submit" class="btn btn-primary btn-block">Continuar</button>
                 </div>
             </form>
 

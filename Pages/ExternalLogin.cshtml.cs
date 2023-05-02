@@ -8,6 +8,7 @@ using System.Security.Claims;
 using IdentityProvider.Interface;
 using IdentityProvider.Constant;
 using IdentityProvider.Enumerables;
+using IdentityProvider.ValueObject;
 
 namespace IdentityProvider.Pages;
 
@@ -80,25 +81,33 @@ public class ExternalLogin : PageModel
             string email = info.Principal.FindFirstValue(ClaimTypes.Email)!;
             // Search if user is already registered with this provider
             ApplicationUser? user = await _userLogin.FindByLoginAsync(info.LoginProvider, info.ProviderKey, CancellationToken.None);
+
             // IF user is not registered
             if (user == null)
             {
                 // Create a new external account
                 user = ApplicationUser.CreateExternalUser(email);
+                // Add Profile claims
+                if (!string.IsNullOrEmpty(info.Principal.FindFirstValue(ClaimTypes.Name)))
+                {
+                    string name = info.Principal.FindFirstValue(ClaimTypes.GivenName)!;
+                    string surname = info.Principal.FindFirstValue(ClaimTypes.Surname)!;
+                    PersonName personName = new(name, surname);
+                    user.CreateProfile(personName);
+                    if (!string.IsNullOrEmpty(info.Principal.FindFirstValue("image")))
+                    {
+                        user.Profile!.AddProfileImage(info.Principal.FindFirstValue("Image")!);
+                    }
+                }
                 // save in database
                 var result = await _userManager.CreateAsync(user);
                 if (result.Succeeded)
                 {
                     // Aggreagate a rol, bydeafult an application role
                     bool role = await _roleManager.RoleExistsAsync(DefaultRoles.ApplicationUser);
-                    if (role)
-                    {
-                        await _userManager.AddToRoleAsync(user, DefaultRoles.ApplicationUser);
-                    }
-                    else
-                    {
-                        await _userManager.AddToRoleAsync(user, DefaultRoles.DefaultUser);
-                    }
+                    if (role) await _userManager.AddToRoleAsync(user, DefaultRoles.ApplicationUser);
+                    else await _userManager.AddToRoleAsync(user, DefaultRoles.DefaultUser);
+
 
                     // save the provider
                     result = await _userManager.AddLoginAsync(user, info);
@@ -109,18 +118,10 @@ public class ExternalLogin : PageModel
                         if (Result.Succeeded)
                         {
                             await _emailSender.SendWelcome(email);
-                            if (user.PhoneNumber is null || user.NormalizedEmail == user.NormalizedUserName)
-                            {
-                                return RedirectToPage("/QuickStartProfile", new { ReturnUrl });
-                            }
-                            else if (user.PhoneNumberConfirmed)
-                            {
-                                return RedirectToPage("/ConfirmPhone", new { ReturnUrl });
-                            }
-                            else
-                            {
-                                return new RedirectResult(ReturnUrl);
-                            }
+                            if (user.PhoneNumber is null || user.NormalizedUserName == user.NormalizedEmail) return RedirectToPage("/QuickStartProfile", new { ReturnUrl });
+                            else if (user.PhoneNumber is not null && !user.PhoneNumberConfirmed) return RedirectToPage("/ConfirmPhone", new { ReturnUrl });
+                            else if (user.PhoneTwoFactorEnabled) return RedirectToPage("/TwoFactor", new { ReturnUrl, Remember = false });
+                            else return new RedirectResult(ReturnUrl);
                         }
                         else
                         {
@@ -160,46 +161,30 @@ public class ExternalLogin : PageModel
                 }
                 else
                 {
-                    // If user uses two factor, redirect to it
-                    if (user.TwoFactorEnabled)
+                    // User already have and account
+                    var result = await _signInManager.ExternalLoginSignInAsync(info.LoginProvider, info.ProviderKey, isPersistent: false);
+                    if (result.Succeeded)
                     {
-                        return RedirectToPage("/TwoFactor", new { ReturnUrl });
+                        if (user.PhoneNumber is null || user.NormalizedUserName == user.NormalizedEmail) return RedirectToPage("/QuickStartProfile", new { ReturnUrl });
+                        else if (user.PhoneNumber is not null && !user.PhoneNumberConfirmed) return RedirectToPage("/ConfirmPhone", new { ReturnUrl });
+                        else if (user.PhoneTwoFactorEnabled) return RedirectToPage("/TwoFactor", new { ReturnUrl, Remember = false });
+                        else return new RedirectResult(ReturnUrl);
+
+                    }
+                    else if (result.IsNotAllowed)
+                    {
+                        // If account is not verified
+                        Error = "Debes verificar tu cuenta, por favor revisa tu correo electronico";
+                        AllowBack = true;
+                        return Page();
                     }
                     else
                     {
-                        // User already have and account
-                        var result = await _signInManager.ExternalLoginSignInAsync(info.LoginProvider, info.ProviderKey, isPersistent: false);
-                        if (result.Succeeded)
-                        {
-
-                            if (user.PhoneNumber is null || user.NormalizedEmail == user.NormalizedUserName)
-                            {
-                                return RedirectToPage("/QuickStartProfile", new { ReturnUrl });
-                            }
-                            else if (user.PhoneNumberConfirmed)
-                            {
-                                return RedirectToPage("/ConfirmPhone", new { ReturnUrl });
-                            }
-                            else
-                            {
-                                return new RedirectResult(ReturnUrl);
-                            }
-
-                        }
-                        else if (result.IsNotAllowed)
-                        {
-                            // If account is not verified
-                            Error = "Debes verificar tu cuenta, por favor revisa tu correo electronico";
-                            AllowBack = true;
-                            return Page();
-                        }
-                        else
-                        {
-                            Error = $"Se produjo un error al obtener tus datos de {info.ProviderDisplayName}.";
-                            AllowBack = true;
-                            return Page();
-                        }
+                        Error = $"Se produjo un error al obtener tus datos de {info.ProviderDisplayName}.";
+                        AllowBack = true;
+                        return Page();
                     }
+
                 }
             }
         }

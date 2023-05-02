@@ -9,8 +9,8 @@ public class MedicalInfo
     public static int MaxLength = 300;
     public static Regex Reg = new Regex("^[a-zA-Z0-9., ]+$");
 
-    public Uri? Aptitude { get; private set; } = default!;
-    public string? Disabilities { get; private set; } = default!;
+    public Uri Aptitude { get; private set; } = default!;
+    public string Disabilities { get; private set; } = default!;
 
     private MedicalInfo() { }
     public MedicalInfo(Uri aptitude)

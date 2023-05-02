@@ -1,58 +1,53 @@
-
-using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
+using System.Text;
 using IdentityProvider.Constant;
 using IdentityProvider.Entity;
 using IdentityProvider.Interface;
+using IdentityProvider.Manager;
+using IdentityProvider.Pages.Model;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.WebUtilities;
 
 namespace IdentityProvider.Pages
 {
     [Authorize(AuthenticationSchemes = "Identity.Application", Roles = $"{DefaultRoles.ApplicationUser},{DefaultRoles.IdentityAdmin}")]
-    public class ConfirmPhone : PageModel
+    public class QuickStartProfile : PageModel
     {
-        private readonly UserManager<ApplicationUser> _userManager;
-        private readonly ISmsSender _smsSender;
 
         [BindProperty]
-        [Display(Name = "Codigo de verificacion")]
-        [Required(ErrorMessage = "Codigo de verificacion requerido")]
-        [MaxLength(8, ErrorMessage = "El codigo de verificacion no puede tener mas de 8 digitos")]
-        [MinLength(6, ErrorMessage = "El codigo de verificacion no puede tener menos de 5 digitos")]
-        public string Code { get; set; } = string.Empty;
-        public string Error { get; set; } = string.Empty;
+        public ProfileModel Profile { get; set; } = new();
+
+        private readonly ApplicationManager _userManager;
         public string ReturnUrl { get; set; } = string.Empty;
+        public string DefaultImage { get; set; } = string.Empty;
+        public string Error { get; set; } = string.Empty;
 
-
-        public ConfirmPhone(UserManager<ApplicationUser> userManager, ISmsSender smsSender)
+        public QuickStartProfile(ApplicationManager userManager)
         {
             _userManager = userManager;
-            _smsSender = smsSender;
         }
 
-        public async Task<IActionResult> OnGet(string returnUrl)
+        public async Task<IActionResult> OnGetAsync(string returnUrl)
         {
             if (string.IsNullOrEmpty(returnUrl)) return Redirect("/Signin");
             else ReturnUrl = returnUrl;
+
             AuthenticateResult auth = await HttpContext.AuthenticateAsync(IdentityConstants.ApplicationScheme);
             if (auth.Succeeded)
             {
                 string userId = auth.Principal.FindFirst(ClaimTypes.NameIdentifier)!.Value;
+                UserProfile? profile = await _userManager.GetUserProfile(userId);
                 ApplicationUser? user = await _userManager.FindByIdAsync(userId);
                 if (user is not null)
                 {
-                    if (user.PhoneNumber is null || user.NormalizedUserName == user.NormalizedEmail) return RedirectToPage("/QuickStartProfile", new { ReturnUrl });
-                    else if (user.PhoneTwoFactorEnabled && user.PhoneNumberConfirmed) return RedirectToPage("/TwoFactor", new { ReturnUrl, Remember = false });
-                    else
-                    {
-                        var Code = await _userManager.GenerateChangePhoneNumberTokenAsync(user, user.PhoneNumber!);
-                        await _smsSender.PhoneConfirmation(user.Email!, Code);
-                        return Page();
-                    }
+                    if (user.UserName is not null) if (user.UserName != user.Email) Profile.UserName = user.UserName;
+                    if (user.PhoneNumber is not null) Profile.PhoneNumber = user.PhoneNumber;
+                    if (profile is not null) if (profile.ProfilePicture is not null) DefaultImage = profile.ProfilePicture;
+                    return Page();
                 }
                 else return RedirectToPage("/Signin", new { ReturnUrl });
             }
@@ -66,6 +61,11 @@ namespace IdentityProvider.Pages
 
             if (ModelState.IsValid)
             {
+                if (Profile.UserName.Contains("@"))
+                {
+                    Error = "El formato del nombre de usuario es invalido.";
+                    return Page();
+                }
 
                 AuthenticateResult auth = await HttpContext.AuthenticateAsync(IdentityConstants.ApplicationScheme);
                 if (auth.Succeeded)
@@ -74,26 +74,25 @@ namespace IdentityProvider.Pages
                     ApplicationUser? user = await _userManager.FindByIdAsync(userId);
                     if (user is not null)
                     {
-                        var verified = await _userManager.VerifyChangePhoneNumberTokenAsync(user, Code, user.PhoneNumber!);
-                        if (!verified)
+                        if (Profile.UserName == user.Email)
                         {
-                            Error = "El codigo ingresado es invalido.";
+                            Error = "El formato del nombre de usuario es invalido.";
                             return Page();
                         }
-                        else
+
+                        var result = await _userManager.SetUserNameAsync(user, Profile.UserName);
+                        if (result.Errors.Count() > 0)
                         {
-                            user.PhoneNumberConfirmed = true;
-                            var result = await _userManager.UpdateAsync(user);
-                            if (result.Errors.Count() > 0)
-                            {
-                                Error = result.Errors.First().Description;
-                                return Page();
-                            }
-                            else
-                            {
-                                return Redirect(returnUrl);
-                            }
+                            Error = result.Errors.First().Description;
+                            return Page();
                         }
+                        result = await _userManager.SetPhoneNumberAsync(user, Profile.PhoneNumber);
+                        if (result.Errors.Count() > 0)
+                        {
+                            Error = result.Errors.First().Description;
+                            return Page();
+                        }
+                        return RedirectToPage("/ConfirmPhone", new { ReturnUrl });
                     }
                     else return RedirectToPage("/Signin", new { ReturnUrl });
                 }
@@ -111,6 +110,7 @@ namespace IdentityProvider.Pages
                 }
                 return Page();
             }
+
         }
     }
 }

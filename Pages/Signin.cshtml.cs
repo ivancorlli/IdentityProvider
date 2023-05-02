@@ -68,25 +68,17 @@ public class SignInModel : PageModel
                     // Delete all their cookies
                     await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
                     await HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
+                    Error = $"La cuenta '{user.Email!.Substring(user.Email.Length - 3)}' no está activa. Comunicate con soporte";
                 }
                 else
                 {
 
                     // If user exists, refresh his authentication cookie
                     await _signIn.RefreshSignInAsync(user);
-                    // If phone is not verified or is it null or username is not set redirect to page
-                    if (user.PhoneNumber is null || user.NormalizedEmail == user.NormalizedUserName)
-                    {
-                        return RedirectToPage("/QuickStartProfile", new { ReturnUrl });
-                    }
-                    else if (user.PhoneNumberConfirmed)
-                    {
-                        return RedirectToPage("/ConfirmPhone", new { ReturnUrl });
-                    }
-                    else
-                    {
-                        return new RedirectResult(ReturnUrl);
-                    }
+                    // If phone number is not set, redirect to page
+                    if (user.PhoneNumber is null || user.NormalizedUserName == user.NormalizedEmail) return RedirectToPage("/QuickStartProfile", new { ReturnUrl });
+                    else if (user.PhoneNumber is not null && !user.PhoneNumberConfirmed) return RedirectToPage("/ConfirmPhone", new { ReturnUrl });
+                    else return new RedirectResult(ReturnUrl);
                 }
             }
             else
@@ -187,50 +179,32 @@ public class SignInModel : PageModel
                     }
                 }
                 var local = await _signIn.UserManager.GetValidTwoFactorProvidersAsync(user);
-                // If user exists we have to use the authentication method than the user prefer
-                if (user.TwoFactorEnabled)
+
+                // Authenticate user with password
+                var result = await _signIn.PasswordSignInAsync(user, Login.Password, Login.Remember, false);
+                // If auth is succeed redirect user to corresponde page
+                if (result.Succeeded)
                 {
-                    // Check password is correct
-                    // Create a two factor code
-                    // Redirect to Two Factor Page
-                    return RedirectToPage("/TwoFactor");
+                    // If phone number is not set, redirect to page
+                    if (user.PhoneNumber is null || user.NormalizedUserName == user.NormalizedEmail) return RedirectToPage("/QuickStartProfile", new { ReturnUrl });
+                    else if (user.PhoneNumber is not null && !user.PhoneNumberConfirmed) return RedirectToPage("/ConfirmPhone", new { ReturnUrl });
+                    else if (user.PhoneTwoFactorEnabled) return RedirectToPage("/TwoFactor", new { ReturnUrl, Remember = Login.Remember });
+                    else return new RedirectResult(ReturnUrl);
+                }
+                // If user is not allowed it's means user's email hasn't been verified.
+                else if (result.IsNotAllowed)
+                {
+                    // Show an erro messsage 
+                    Error = "Debes verificar tu cuenta, por favor revisa tu correo electronico";
+                    return Page();
                 }
                 else
                 {
-                    // Authenticate user with password
-                    var result = await _signIn.PasswordSignInAsync(user, Login.Password, Login.Remember, lockoutOnFailure: false);
-                    // If auth is succeed redirect user to corresponde page
-                    if (result.Succeeded)
-                    {
-                        // If phone number is not set, redirect to page
-                        if (user.PhoneNumber is null || user.NormalizedUserName == user.NormalizedEmail)
-                        {
-                            return RedirectToPage("/QuickStartProfile", new { ReturnUrl });
-                        }
-                        else if (user.PhoneNumberConfirmed)
-                        {
-                            return RedirectToPage("/ConfirmPhone", new { ReturnUrl });
-                        }
-                        else
-                        {
-                            // otherwise redirect to callback url
-                            return new RedirectResult(ReturnUrl);
-                        }
-                    }
-                    // If user is not allowed it's means user's email hasn't been verified.
-                    else if (result.IsNotAllowed)
-                    {
-                        // Show an erro messsage 
-                        Error = "Debes verificar tu cuenta, por favor revisa tu correo electronico";
-                        return Page();
-                    }
-                    else
-                    {
-                        // If till there is an error, probably the password is wrong
-                        Error = "Contraseña incorrecta";
-                        return Page();
-                    }
+                    // If till there is an error, probably the password is wrong
+                    Error = "Contraseña incorrecta";
+                    return Page();
                 }
+
             }
             else
             {
