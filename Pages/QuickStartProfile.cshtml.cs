@@ -39,19 +39,42 @@ namespace IdentityProvider.Pages
             AuthenticateResult auth = await HttpContext.AuthenticateAsync(IdentityConstants.ApplicationScheme);
             if (auth.Succeeded)
             {
-                string userId = auth.Principal.FindFirst(ClaimTypes.NameIdentifier)!.Value;
-                UserProfile? profile = await _userManager.GetUserProfile(userId);
+                string userId = User.FindFirst(ClaimTypes.NameIdentifier)!.Value;
                 ApplicationUser? user = await _userManager.FindByIdAsync(userId);
                 if (user is not null)
                 {
-                    if (user.UserName is not null) if (user.UserName != user.Email) Profile.UserName = user.UserName;
-                    if (user.PhoneNumber is not null) Profile.PhoneNumber = user.PhoneNumber;
-                    if (profile is not null) if (profile.ProfilePicture is not null) DefaultImage = profile.ProfilePicture;
-                    return Page();
+                    if (user.PhoneNumber is not null && user.NormalizedUserName != user.NormalizedEmail && !user.PhoneNumberConfirmed)
+                    {
+                        return RedirectToPage("/ConfirmPhone", new { ReturnUrl });
+                    }
+                    else if (user.PhoneNumber is not null && user.NormalizedEmail != user.NormalizedUserName && user.PhoneNumberConfirmed)
+                    {
+                        return new RedirectResult(ReturnUrl);
+                    }
+                    else
+                    {
+                        UserProfile? profile = await _userManager.GetUserProfile(userId);
+                        if (user.UserName is not null) if (user.UserName != user.Email) Profile.UserName = user.UserName;
+                        if (user.PhoneNumber is not null) Profile.PhoneNumber = user.PhoneNumber;
+                        if (profile is not null) if (profile.ProfilePicture is not null) DefaultImage = profile.ProfilePicture;
+                        return Page();
+                    }
                 }
-                else return RedirectToPage("/Signin", new { ReturnUrl });
+                else
+                {
+                    // Delete all their cookies
+                    await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
+                    await HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
+                    return RedirectToPage("/Signin", new { ReturnUrl });
+                }
             }
-            else return RedirectToPage("/Signin", new { ReturnUrl });
+            else
+            {
+                // Delete all their cookies
+                await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
+                await HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
+                return RedirectToPage("/Signin", new { ReturnUrl });
+            }
         }
 
         public async Task<IActionResult> OnPost(string returnUrl)
@@ -94,9 +117,21 @@ namespace IdentityProvider.Pages
                         }
                         return RedirectToPage("/ConfirmPhone", new { ReturnUrl });
                     }
-                    else return RedirectToPage("/Signin", new { ReturnUrl });
+                    else
+                    {
+                        // Delete all their cookies
+                        await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
+                        await HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
+                        return RedirectToPage("/Signin", new { ReturnUrl });
+                    }
                 }
-                else return RedirectToPage("/Signin", new { ReturnUrl });
+                else
+                {
+                    // Delete all their cookies
+                    await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
+                    await HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
+                    return RedirectToPage("/Signin", new { ReturnUrl });
+                }
             }
             else
             {

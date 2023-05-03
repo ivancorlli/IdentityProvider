@@ -70,13 +70,13 @@
 							}
 						}
 						<div class="form-floating mb-3">
-							<input type="email" asp-for="Login.Email" class="form-control" autocomplete="email"
-		aria-required="true" />
+							<input type="text" asp-for="Login.Email" class="form-control" autocomplete="on"
+								aria-required="true" />
 							<label asp-for="Login.Email" class="form-label"></label>
 						</div>
 						<div class="form-floating mb-3">
 							<input asp-for="Login.Password" class="form-control" aria-required="true"
-		autocomplete="current-password" />
+								autocomplete="current-password" />
 							<label asp-for="Login.Password" class="form-label"></label>
 							<div>
 								@{

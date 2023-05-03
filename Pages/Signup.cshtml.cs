@@ -72,7 +72,7 @@ namespace IdentityProvider.Pages
                     string UserId = await _userManager.GetUserIdAsync(user);
                     string Code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
                     Code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(Code));
-                    long Exp = DateTimeOffset.UtcNow.AddMinutes(5).ToUnixTimeSeconds();
+                    long Exp = DateTimeOffset.UtcNow.AddMinutes(15).ToUnixTimeSeconds();
                     string callback = Url.Page(
                         pageName: "/ConfirmEmail",
                         pageHandler: null,
@@ -88,7 +88,7 @@ namespace IdentityProvider.Pages
                     // Send welcom email
                     await _emailSender.SendWelcome(user.Email!.ToString());
                     // Send confirmation email
-                    await _emailSender.SendConfirmationEmail(user.Email.ToString(), callback!); ;
+                    await _emailSender.SendConfirmationEmail(user.Email.ToString(), callback!);
                     ModelState.Clear();
                     return RedirectToPage("/SignupConfirmation", new { Email = user.Email.ToString(), ReturnUrl });
                 }

@@ -11,8 +11,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace IdentityProvider.Migrations.Migrate
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20230502120456_Initial")]
-    partial class Initial
+    [Migration("20230503115343_InitialMigration")]
+    partial class InitialMigration
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -96,9 +96,6 @@ namespace IdentityProvider.Migrations.Migrate
                         .HasColumnType("longtext");
 
                     b.Property<bool>("PhoneNumberConfirmed")
-                        .HasColumnType("tinyint(1)");
-
-                    b.Property<bool>("PhoneTwoFactorEnabled")
                         .HasColumnType("tinyint(1)");
 
                     b.Property<string>("SecurityStamp")

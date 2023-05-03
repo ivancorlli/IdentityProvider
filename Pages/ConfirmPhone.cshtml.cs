@@ -1,6 +1,7 @@
-
+using System.Runtime.InteropServices.ComTypes;
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
+using System.Text;
 using IdentityProvider.Constant;
 using IdentityProvider.Entity;
 using IdentityProvider.Interface;
@@ -9,6 +10,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.WebUtilities;
 
 namespace IdentityProvider.Pages
 {
@@ -26,7 +28,8 @@ namespace IdentityProvider.Pages
         public string Code { get; set; } = string.Empty;
         public string Error { get; set; } = string.Empty;
         public string ReturnUrl { get; set; } = string.Empty;
-
+        public bool AllowChange {get;set;} = false;
+        public string AllowTitle { get; set; } = string.Empty;
 
         public ConfirmPhone(UserManager<ApplicationUser> userManager, ISmsSender smsSender)
         {
@@ -38,32 +41,45 @@ namespace IdentityProvider.Pages
         {
             if (string.IsNullOrEmpty(returnUrl)) return Redirect("/Signin");
             else ReturnUrl = returnUrl;
+            AllowTitle = "Verificar numero de telefono";
             AuthenticateResult auth = await HttpContext.AuthenticateAsync(IdentityConstants.ApplicationScheme);
             if (auth.Succeeded)
             {
-                string userId = auth.Principal.FindFirst(ClaimTypes.NameIdentifier)!.Value;
+                string userId = User.FindFirst(ClaimTypes.NameIdentifier)!.Value;
                 ApplicationUser? user = await _userManager.FindByIdAsync(userId);
                 if (user is not null)
                 {
                     if (user.PhoneNumber is null || user.NormalizedUserName == user.NormalizedEmail) return RedirectToPage("/QuickStartProfile", new { ReturnUrl });
-                    else if (user.PhoneTwoFactorEnabled && user.PhoneNumberConfirmed) return RedirectToPage("/TwoFactor", new { ReturnUrl, Remember = false });
+                    else if (user.PhoneNumber is not null && user.PhoneNumberConfirmed) return new RedirectResult(returnUrl);
                     else
                     {
-                        var Code = await _userManager.GenerateChangePhoneNumberTokenAsync(user, user.PhoneNumber!);
+                        string Code = await _userManager.GenerateChangePhoneNumberTokenAsync(user, user.PhoneNumber!);
                         await _smsSender.PhoneConfirmation(user.Email!, Code);
                         return Page();
                     }
                 }
-                else return RedirectToPage("/Signin", new { ReturnUrl });
+                else
+                {
+                    // Delete all their cookies
+                    await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
+                    await HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
+                    return RedirectToPage("/Signin", new { ReturnUrl });
+                }
             }
-            else return RedirectToPage("/Signin", new { ReturnUrl });
+            else
+            {
+                // Delete all their cookies
+                await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
+                await HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
+                return RedirectToPage("/Signin", new { ReturnUrl });
+            }
         }
 
         public async Task<IActionResult> OnPost(string returnUrl)
         {
             if (string.IsNullOrEmpty(returnUrl)) return Redirect("/Signin");
             else ReturnUrl = returnUrl;
-
+            AllowTitle = "Verificar numero de telefono";
             if (ModelState.IsValid)
             {
 
@@ -74,7 +90,7 @@ namespace IdentityProvider.Pages
                     ApplicationUser? user = await _userManager.FindByIdAsync(userId);
                     if (user is not null)
                     {
-                        var verified = await _userManager.VerifyChangePhoneNumberTokenAsync(user, Code, user.PhoneNumber!);
+                        bool verified = await _userManager.VerifyChangePhoneNumberTokenAsync(user, Code, user.PhoneNumber!);
                         if (!verified)
                         {
                             Error = "El codigo ingresado es invalido.";
@@ -83,6 +99,8 @@ namespace IdentityProvider.Pages
                         else
                         {
                             user.PhoneNumberConfirmed = true;
+                            // by default use two factor 
+                            user.UseTwoFactor();
                             var result = await _userManager.UpdateAsync(user);
                             if (result.Errors.Count() > 0)
                             {
@@ -95,9 +113,21 @@ namespace IdentityProvider.Pages
                             }
                         }
                     }
-                    else return RedirectToPage("/Signin", new { ReturnUrl });
+                    else
+                                {
+                // Delete all their cookies
+                await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
+                await HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
+                return RedirectToPage("/Signin", new { ReturnUrl });
+            }
                 }
-                else return RedirectToPage("/Signin", new { ReturnUrl });
+                else 
+                            {
+                // Delete all their cookies
+                await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
+                await HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
+                return RedirectToPage("/Signin", new { ReturnUrl });
+            }
             }
             else
             {
@@ -111,6 +141,20 @@ namespace IdentityProvider.Pages
                 }
                 return Page();
             }
+        }
+
+        public IActionResult OnPostToAllowChange()
+        {
+            AllowChange = true;
+            AllowTitle = "Actualizar numero de telefono";
+            return Page();
+        }
+
+        public IActionResult OnPostToCancel()
+        {
+            AllowTitle = "Verificar numero de telefono";
+            AllowChange = false;
+            return Page();
         }
     }
 }

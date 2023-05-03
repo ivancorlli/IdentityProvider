@@ -68,11 +68,10 @@ public class SignInModel : PageModel
                     // Delete all their cookies
                     await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
                     await HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
-                    Error = $"La cuenta '{user.Email!.Substring(user.Email.Length - 3)}' no está activa. Comunicate con soporte";
+                    Error = $"La cuenta '{user.Email!.Substring(0,4)}#####' no está activa. Comunicate con soporte";
                 }
                 else
                 {
-
                     // If user exists, refresh his authentication cookie
                     await _signIn.RefreshSignInAsync(user);
                     // If phone number is not set, redirect to page
@@ -178,17 +177,14 @@ public class SignInModel : PageModel
                         return Page();
                     }
                 }
-                var local = await _signIn.UserManager.GetValidTwoFactorProvidersAsync(user);
-
                 // Authenticate user with password
-                var result = await _signIn.PasswordSignInAsync(user, Login.Password, Login.Remember, false);
+                var result = await _signIn.PasswordSignInAsync(user, Login.Password, Login.Remember,false);
                 // If auth is succeed redirect user to corresponde page
                 if (result.Succeeded)
                 {
                     // If phone number is not set, redirect to page
                     if (user.PhoneNumber is null || user.NormalizedUserName == user.NormalizedEmail) return RedirectToPage("/QuickStartProfile", new { ReturnUrl });
                     else if (user.PhoneNumber is not null && !user.PhoneNumberConfirmed) return RedirectToPage("/ConfirmPhone", new { ReturnUrl });
-                    else if (user.PhoneTwoFactorEnabled) return RedirectToPage("/TwoFactor", new { ReturnUrl, Remember = Login.Remember });
                     else return new RedirectResult(ReturnUrl);
                 }
                 // If user is not allowed it's means user's email hasn't been verified.
@@ -197,6 +193,9 @@ public class SignInModel : PageModel
                     // Show an erro messsage 
                     Error = "Debes verificar tu cuenta, por favor revisa tu correo electronico";
                     return Page();
+                }else if(result.RequiresTwoFactor)
+                {
+                    return RedirectToPage("/TwoFactor", new { ReturnUrl, Remember = Login.Remember });
                 }
                 else
                 {

@@ -120,7 +120,6 @@ public class ExternalLogin : PageModel
                             await _emailSender.SendWelcome(email);
                             if (user.PhoneNumber is null || user.NormalizedUserName == user.NormalizedEmail) return RedirectToPage("/QuickStartProfile", new { ReturnUrl });
                             else if (user.PhoneNumber is not null && !user.PhoneNumberConfirmed) return RedirectToPage("/ConfirmPhone", new { ReturnUrl });
-                            else if (user.PhoneTwoFactorEnabled) return RedirectToPage("/TwoFactor", new { ReturnUrl, Remember = false });
                             else return new RedirectResult(ReturnUrl);
                         }
                         else
@@ -156,7 +155,7 @@ public class ExternalLogin : PageModel
             {
                 if (user.Status != UserStatus.Active)
                 {
-                    Error = $"La cuenta '{user.Email}' no está activa. Comunicate con soporte";
+                    Error = $"La cuenta '{user.Email!.Substring(0,4)}######' no está activa. Comunicate con soporte";
                     return Page();
                 }
                 else
@@ -167,9 +166,12 @@ public class ExternalLogin : PageModel
                     {
                         if (user.PhoneNumber is null || user.NormalizedUserName == user.NormalizedEmail) return RedirectToPage("/QuickStartProfile", new { ReturnUrl });
                         else if (user.PhoneNumber is not null && !user.PhoneNumberConfirmed) return RedirectToPage("/ConfirmPhone", new { ReturnUrl });
-                        else if (user.PhoneTwoFactorEnabled) return RedirectToPage("/TwoFactor", new { ReturnUrl, Remember = false });
                         else return new RedirectResult(ReturnUrl);
 
+                    }
+                    else if (result.RequiresTwoFactor)
+                    {
+                        return RedirectToPage("/TwoFactor", new { ReturnUrl});
                     }
                     else if (result.IsNotAllowed)
                     {

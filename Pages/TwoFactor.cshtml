@@ -8,20 +8,28 @@
     <div class="col col-md-4 justify-content-center">
         <span class="fs'3 my-2">Ingresar codigo</span>
         @{
-        if (!string.IsNullOrEmpty(Model.Error))
-        {
-        <div class="alert alert-danger" role="alert">
-        @Model.Error
-        </div>
+            if (!string.IsNullOrEmpty(Model.Error))
+            {
+                <div class="alert alert-danger" role="alert">
+                    @Model.Error
+                </div>
+            }
         }
+        @{
+            if (!string.IsNullOrEmpty(Model.CodeSent))
+            {
+                <div class="alert alert-success" role="alert">
+                    @Model.CodeSent
+                </div>
+            }
         }
-        <div class="row my-2">
+        <div class="row my-3">
             <form method="post" class="my-3">
                 <div class="form-floating">
                     <input asp-for="Code" class="form-control" autocomplete="on" aria-required="true" type="text" />
                     <label asp-for="Code" class="form-label"></label>
                 </div>
-                <div>
+                <div class="my-2">
                     <button type="submit" class="btn btn-primary btn-block">Continuar</button>
                 </div>
             </form>

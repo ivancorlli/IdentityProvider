@@ -9,7 +9,6 @@ namespace IdentityProvider.Entity
         public UserStatus Status { get; private set; } = default!;
         // It distiguish between users that have been authenticated by a Social Provider, they are not going to use two factor, becouse theirs provider is already implenenting it.
         public bool IsAuthenticatedExternaly {get;private set;} = default!;
-        public bool PhoneTwoFactorEnabled {get;private set;} = default!;
         public IEnumerable<Access> Permissions => _permissions;
         public UserProfile? Profile { get; private set; }
         // OWn Config //
@@ -26,7 +25,8 @@ namespace IdentityProvider.Entity
                 EmailConfirmed = true,
                 UserName =email,
                 IsAuthenticatedExternaly = true,
-                PhoneTwoFactorEnabled = false
+                TwoFactorEnabled = false,
+                LockoutEnabled=false
             };
             return newUser;
         }
@@ -40,9 +40,10 @@ namespace IdentityProvider.Entity
                 EmailConfirmed = true,
                 UserName =email,
                 IsAuthenticatedExternaly = true,
-                PhoneTwoFactorEnabled = false,
+                TwoFactorEnabled = false,
                 PhoneNumber = phone,
-                PhoneNumberConfirmed =true
+                PhoneNumberConfirmed =true,
+                LockoutEnabled=false
             };
             return newUser;
         }
@@ -54,9 +55,21 @@ namespace IdentityProvider.Entity
                 Email = email,
                 UserName = email,
                 IsAuthenticatedExternaly = false,
-                PhoneTwoFactorEnabled = true
+                TwoFactorEnabled = false,
+                LockoutEnabled=false
             };
             return newUser;
+        }
+
+
+        public void UseTwoFactor()
+        {
+            TwoFactorEnabled = true;
+        }
+
+        public void DeactiveTwoFactor()
+        {
+            TwoFactorEnabled = false;
         }
 
         /// <summary>

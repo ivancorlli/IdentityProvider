@@ -21,7 +21,6 @@ namespace IdentityProvider.Context
             // User
             builder.Entity<ApplicationUser>().Property(x => x.Status).HasConversion(x => x.ToString(), x => (UserStatus)Enum.Parse(typeof(UserStatus), x));
             builder.Entity<ApplicationUser>().Property(x => x.IsAuthenticatedExternaly).IsRequired();
-            builder.Entity<ApplicationUser>().Property(x => x.PhoneTwoFactorEnabled).IsRequired();
             builder.Entity<ApplicationUser>().HasMany(x => x.Permissions).WithOne().HasForeignKey(x => x.ResourceId).OnDelete(DeleteBehavior.ClientCascade);
             builder.Entity<ApplicationUser>().HasOne(x=>x.Profile).WithOne().HasForeignKey<UserProfile>(x=>x.UserId).OnDelete(DeleteBehavior.ClientCascade);
             // Role

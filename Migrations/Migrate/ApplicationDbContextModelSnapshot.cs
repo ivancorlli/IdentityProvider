@@ -95,9 +95,6 @@ namespace IdentityProvider.Migrations.Migrate
                     b.Property<bool>("PhoneNumberConfirmed")
                         .HasColumnType("tinyint(1)");
 
-                    b.Property<bool>("PhoneTwoFactorEnabled")
-                        .HasColumnType("tinyint(1)");
-
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("longtext");
 
