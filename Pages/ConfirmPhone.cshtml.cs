@@ -87,7 +87,8 @@ namespace IdentityProvider.Pages
                 state!.Errors.Clear();
                 state.ValidationState = ModelValidationState.Skipped;
             }
-            if (ModelState.IsValid)
+            // Skip validations for PhoneNumber
+            if (IsModelValid("PhoneNumber"))
             {
 
                 AuthenticateResult auth = await HttpContext.AuthenticateAsync(IdentityConstants.ApplicationScheme);
@@ -206,9 +207,10 @@ namespace IdentityProvider.Pages
         public async Task<IActionResult> OnPostToChangePhoneAsync(string returnUrl)
         {
             AllowTitle = "Actualizar numero de telefono";
+            AllowChange = true;
             ReturnUrl = returnUrl;
-
-            if (!ModelState.IsValid)
+            // Skip validations for Code
+            if (IsModelValid("Code"))
             {
                 AuthenticateResult auth = await HttpContext.AuthenticateAsync(IdentityConstants.ApplicationScheme);
                 if (auth.Succeeded)
@@ -266,5 +268,32 @@ namespace IdentityProvider.Pages
 
         }
 
+
+        private bool IsModelValid(string key)
+        {
+            if (ModelState.IsValid)
+            {
+                return true;
+            }
+            else
+            {
+                var response = true;
+                foreach (var modelError in ModelState)
+                {
+                    if (modelError.Value.Errors.Count > 0)
+                    {
+                        if (modelError.Key == key)
+                        {
+                            response = true;
+                        }
+                        else
+                        {
+                            response = false;
+                        }
+                    }
+                }
+                return response;
+            }
+        }
     }
 }

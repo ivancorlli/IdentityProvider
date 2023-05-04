@@ -27,7 +27,10 @@
                         </div>
                         <div class="w-100 d-flex justify-content-between align-items-center">
                             <div class="my-2">
-                                <button type="submit" asp-page-handler="ToVerify" class="btn btn-primary btn-block">Confirmar</button>
+                                <button type="submit" 
+                                asp-page-handler="ToVerify"
+                                asp-route-ReturnUrl="@Model.ReturnUrl" 
+                                class="btn btn-primary btn-block">Confirmar</button>
                             </div>
                             <div class="h-100 d-flex flex-column justify-content-center aling-items-between">
                                 <form asp-page-handler="ToAllowChange" asp-route-ReturnUrl="@Model.ReturnUrl" method="post">
