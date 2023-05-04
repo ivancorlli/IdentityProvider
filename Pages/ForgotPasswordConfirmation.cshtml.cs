@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace IdentityProvider.Pages;
 
+[ValidateAntiForgeryToken]
 public class ForgotPasswordConfirmationModel : PageModel
 {
 	public string ReturnUrl { get; set; } = string.Empty;

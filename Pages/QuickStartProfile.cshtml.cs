@@ -10,54 +10,114 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
-namespace IdentityProvider.Pages
+namespace IdentityProvider.Pages;
+
+[ValidateAntiForgeryToken]
+[Authorize(AuthenticationSchemes = "Identity.Application", Roles = $"{DefaultRoles.ApplicationUser},{DefaultRoles.IdentityAdmin}")]
+public class QuickStartProfile : PageModel
 {
-    [Authorize(AuthenticationSchemes = "Identity.Application", Roles = $"{DefaultRoles.ApplicationUser},{DefaultRoles.IdentityAdmin}")]
-    public class QuickStartProfile : PageModel
+
+    [BindProperty]
+    public ProfileModel Profile { get; set; } = new();
+    private readonly ISmsSender _smsSender;
+    private readonly ApplicationManager _userManager;
+    public string ReturnUrl { get; set; } = string.Empty;
+    public string DefaultImage { get; set; } = string.Empty;
+    public string Error { get; set; } = string.Empty;
+
+    public QuickStartProfile(ApplicationManager userManager,ISmsSender smsSender)
     {
+        _userManager = userManager;
+        _smsSender = smsSender;
+    }
 
-        [BindProperty]
-        public ProfileModel Profile { get; set; } = new();
-        private readonly ISmsSender _smsSender;
-        private readonly ApplicationManager _userManager;
-        public string ReturnUrl { get; set; } = string.Empty;
-        public string DefaultImage { get; set; } = string.Empty;
-        public string Error { get; set; } = string.Empty;
+    public async Task<IActionResult> OnGetAsync(string returnUrl)
+    {
+        if (string.IsNullOrEmpty(returnUrl)) return Redirect("/Signin");
+        else ReturnUrl = returnUrl;
 
-        public QuickStartProfile(ApplicationManager userManager,ISmsSender smsSender)
+        AuthenticateResult auth = await HttpContext.AuthenticateAsync(IdentityConstants.ApplicationScheme);
+        if (auth.Succeeded)
         {
-            _userManager = userManager;
-            _smsSender = smsSender;
+            string userId = User.FindFirst(ClaimTypes.NameIdentifier)!.Value;
+            ApplicationUser? user = await _userManager.FindByIdAsync(userId);
+            if (user is not null)
+            {
+                if (user.PhoneNumber is not null && user.NormalizedUserName != user.NormalizedEmail && !user.PhoneNumberConfirmed)
+                {
+                    return RedirectToPage("/ConfirmPhone", new { ReturnUrl });
+                }
+                else if (user.PhoneNumber is not null && user.NormalizedEmail != user.NormalizedUserName && user.PhoneNumberConfirmed)
+                {
+                    return new RedirectResult(ReturnUrl);
+                }
+                else
+                {
+                    UserProfile? profile = await _userManager.GetUserProfile(userId);
+                    if (user.UserName is not null) if (user.UserName != user.Email) Profile.UserName = user.UserName;
+                    if (user.PhoneNumber is not null) Profile.PhoneNumber = user.PhoneNumber;
+                    if (profile is not null) if (profile.ProfilePicture is not null) DefaultImage = profile.ProfilePicture;
+                    return Page();
+                }
+            }
+            else
+            {
+                // Delete all their cookies
+                await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
+                await HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
+                return RedirectToPage("/Signin", new { ReturnUrl });
+            }
         }
-
-        public async Task<IActionResult> OnGetAsync(string returnUrl)
+        else
         {
-            if (string.IsNullOrEmpty(returnUrl)) return Redirect("/Signin");
-            else ReturnUrl = returnUrl;
+            // Delete all their cookies
+            await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
+            await HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
+            return RedirectToPage("/Signin", new { ReturnUrl });
+        }
+    }
+
+    public async Task<IActionResult> OnPost(string returnUrl)
+    {
+        if (string.IsNullOrEmpty(returnUrl)) return Redirect("/Signin");
+        else ReturnUrl = returnUrl;
+
+        if (ModelState.IsValid)
+        {
+            if (Profile.UserName.Contains("@"))
+            {
+                Error = "El formato del nombre de usuario es invalido.";
+                return Page();
+            }
 
             AuthenticateResult auth = await HttpContext.AuthenticateAsync(IdentityConstants.ApplicationScheme);
             if (auth.Succeeded)
             {
-                string userId = User.FindFirst(ClaimTypes.NameIdentifier)!.Value;
+                string userId = auth.Principal.FindFirst(ClaimTypes.NameIdentifier)!.Value;
                 ApplicationUser? user = await _userManager.FindByIdAsync(userId);
                 if (user is not null)
                 {
-                    if (user.PhoneNumber is not null && user.NormalizedUserName != user.NormalizedEmail && !user.PhoneNumberConfirmed)
+                    if (Profile.UserName == user.Email)
                     {
-                        return RedirectToPage("/ConfirmPhone", new { ReturnUrl });
-                    }
-                    else if (user.PhoneNumber is not null && user.NormalizedEmail != user.NormalizedUserName && user.PhoneNumberConfirmed)
-                    {
-                        return new RedirectResult(ReturnUrl);
-                    }
-                    else
-                    {
-                        UserProfile? profile = await _userManager.GetUserProfile(userId);
-                        if (user.UserName is not null) if (user.UserName != user.Email) Profile.UserName = user.UserName;
-                        if (user.PhoneNumber is not null) Profile.PhoneNumber = user.PhoneNumber;
-                        if (profile is not null) if (profile.ProfilePicture is not null) DefaultImage = profile.ProfilePicture;
+                        Error = "El formato del nombre de usuario es invalido.";
                         return Page();
                     }
+
+                    var result = await _userManager.SetUserNameAsync(user, Profile.UserName);
+                    if (result.Errors.Count() > 0)
+                    {
+                        Error = result.Errors.First().Description;
+                        return Page();
+                    }
+                    result = await _userManager.SetPhoneNumberAsync(user, Profile.PhoneNumber);
+                    if (result.Errors.Count() > 0)
+                    {
+                        Error = result.Errors.First().Description;
+                        return Page();
+                    }
+                    string Code = await _userManager.GenerateChangePhoneNumberTokenAsync(user, user.PhoneNumber!);
+                    await _smsSender.PhoneConfirmation(user.Email!, Code);
+                    return RedirectToPage("/ConfirmPhone", new { ReturnUrl });
                 }
                 else
                 {
@@ -75,78 +135,18 @@ namespace IdentityProvider.Pages
                 return RedirectToPage("/Signin", new { ReturnUrl });
             }
         }
-
-        public async Task<IActionResult> OnPost(string returnUrl)
+        else
         {
-            if (string.IsNullOrEmpty(returnUrl)) return Redirect("/Signin");
-            else ReturnUrl = returnUrl;
-
-            if (ModelState.IsValid)
+            foreach (var modelError in ModelState)
             {
-                if (Profile.UserName.Contains("@"))
+                if (modelError.Value.Errors.Count > 0)
                 {
-                    Error = "El formato del nombre de usuario es invalido.";
-                    return Page();
-                }
-
-                AuthenticateResult auth = await HttpContext.AuthenticateAsync(IdentityConstants.ApplicationScheme);
-                if (auth.Succeeded)
-                {
-                    string userId = auth.Principal.FindFirst(ClaimTypes.NameIdentifier)!.Value;
-                    ApplicationUser? user = await _userManager.FindByIdAsync(userId);
-                    if (user is not null)
-                    {
-                        if (Profile.UserName == user.Email)
-                        {
-                            Error = "El formato del nombre de usuario es invalido.";
-                            return Page();
-                        }
-
-                        var result = await _userManager.SetUserNameAsync(user, Profile.UserName);
-                        if (result.Errors.Count() > 0)
-                        {
-                            Error = result.Errors.First().Description;
-                            return Page();
-                        }
-                        result = await _userManager.SetPhoneNumberAsync(user, Profile.PhoneNumber);
-                        if (result.Errors.Count() > 0)
-                        {
-                            Error = result.Errors.First().Description;
-                            return Page();
-                        }
-                        string Code = await _userManager.GenerateChangePhoneNumberTokenAsync(user, user.PhoneNumber!);
-                        await _smsSender.PhoneConfirmation(user.Email!, Code);
-                        return RedirectToPage("/ConfirmPhone", new { ReturnUrl });
-                    }
-                    else
-                    {
-                        // Delete all their cookies
-                        await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
-                        await HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
-                        return RedirectToPage("/Signin", new { ReturnUrl });
-                    }
-                }
-                else
-                {
-                    // Delete all their cookies
-                    await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
-                    await HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
-                    return RedirectToPage("/Signin", new { ReturnUrl });
+                    Error = modelError.Value.Errors.First().ErrorMessage.ToString();
+                    break;
                 }
             }
-            else
-            {
-                foreach (var modelError in ModelState)
-                {
-                    if (modelError.Value.Errors.Count > 0)
-                    {
-                        Error = modelError.Value.Errors.First().ErrorMessage.ToString();
-                        break;
-                    }
-                }
-                return Page();
-            }
-
+            return Page();
         }
+
     }
 }

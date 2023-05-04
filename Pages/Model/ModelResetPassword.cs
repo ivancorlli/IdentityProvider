@@ -1,6 +1,4 @@
-﻿using System.ComponentModel;
-using System.ComponentModel.DataAnnotations;
-using System.Xml.Linq;
+﻿using System.ComponentModel.DataAnnotations;
 
 namespace IdentityProvider.Pages.Model;
 
@@ -17,6 +15,6 @@ public class ModelResetPassword
 	[Display(Name = "Confirmar contraseña")]
 	[Compare("Password", ErrorMessage = "The password and confirmation password do not match.")]
 	[Required(ErrorMessage ="Confirmar contraseña requerida")]
-	public string? ConfirmPassword { get; set; }
+	public string ConfirmPassword { get; set; } =default!;
 
 }

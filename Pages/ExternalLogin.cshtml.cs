@@ -9,9 +9,11 @@ using IdentityProvider.Interface;
 using IdentityProvider.Constant;
 using IdentityProvider.Enumerables;
 using IdentityProvider.ValueObject;
+using IdentityProvider.Helper;
 
 namespace IdentityProvider.Pages;
 
+[ValidateAntiForgeryToken]
 public class ExternalLogin : PageModel
 {
     private readonly SignInManager<ApplicationUser> _signInManager;
@@ -85,48 +87,63 @@ public class ExternalLogin : PageModel
             // IF user is not registered
             if (user == null)
             {
-                // Create a new external account
-                user = ApplicationUser.CreateExternalUser(email);
-                // Add Profile claims
-                if (!string.IsNullOrEmpty(info.Principal.FindFirstValue(ClaimTypes.Name)))
+                // We search if the user has already an account with this email
+                user = await _userManager.FindByEmailAsync(email);
+                if (user is not null)
                 {
-                    string name = info.Principal.FindFirstValue(ClaimTypes.GivenName)!;
-                    string surname = info.Principal.FindFirstValue(ClaimTypes.Surname)!;
-                    PersonName personName = new(name, surname);
-                    user.CreateProfile(personName);
-                    if (!string.IsNullOrEmpty(info.Principal.FindFirstValue("image")))
-                    {
-                        user.Profile!.AddProfileImage(info.Principal.FindFirstValue("Image")!);
-                    }
-                }
-                // save in database
-                var result = await _userManager.CreateAsync(user);
-                if (result.Succeeded)
-                {
-                    // Aggreagate a rol, bydeafult an application role
-                    bool role = await _roleManager.RoleExistsAsync(DefaultRoles.ApplicationUser);
-                    if (role) await _userManager.AddToRoleAsync(user, DefaultRoles.ApplicationUser);
-                    else await _userManager.AddToRoleAsync(user, DefaultRoles.DefaultUser);
+                    // If there is any account with this email, we add the login provider to this user
 
-
-                    // save the provider
-                    result = await _userManager.AddLoginAsync(user, info);
+                    // Add Login
+                    var result = await _userManager.AddLoginAsync(user, info);
                     if (result.Succeeded)
                     {
-                        var Result = await _signInManager.ExternalLoginSignInAsync(info.LoginProvider, info.ProviderKey, isPersistent: false);
-
-                        if (Result.Succeeded)
+                        // Check user status
+                        if (user.Status != UserStatus.Active)
                         {
-                            await _emailSender.SendWelcome(email);
-                            if (user.PhoneNumber is null || user.NormalizedUserName == user.NormalizedEmail) return RedirectToPage("/QuickStartProfile", new { ReturnUrl });
-                            else if (user.PhoneNumber is not null && !user.PhoneNumberConfirmed) return RedirectToPage("/ConfirmPhone", new { ReturnUrl });
-                            else return new RedirectResult(ReturnUrl);
+                            Error = $"La cuenta {HideString.HideEmail(user.Email!)} no está activa. Comunicate con soporte";
+                            return Page();
                         }
                         else
                         {
-                            Error = $"Se produjo un error al obtener tus datos de {info.ProviderDisplayName}.";
-                            AllowBack = true;
-                            return Page();
+                            var resul = await _signInManager.ExternalLoginSignInAsync(info.LoginProvider, info.ProviderKey, isPersistent: false);
+                            if (resul.Succeeded)
+                            {
+                                if (user.PhoneNumber is null || user.NormalizedUserName == user.NormalizedEmail) return RedirectToPage("/QuickStartProfile", new { ReturnUrl });
+                                else if (user.PhoneNumber is not null && !user.PhoneNumberConfirmed) return RedirectToPage("/ConfirmPhone", new { ReturnUrl });
+                                else return new RedirectResult(ReturnUrl);
+
+                            }
+                            else if (resul.RequiresTwoFactor)
+                            {
+                                string Code;
+                                string Token;
+                                if (user.PhoneNumber is null || !user.PhoneNumberConfirmed)
+                                {
+                                    Token = "Email";
+                                    Code = await _userManager.GenerateTwoFactorTokenAsync(user, Token);
+                                    await _smsSender.PhoneConfirmation(user.Email!, Code);
+                                }
+                                else
+                                {
+                                    Token = "Phone";
+                                    Code = await _userManager.GenerateTwoFactorTokenAsync(user, Token);
+                                    await _smsSender.PhoneConfirmation(user.Email!, Code);
+                                }
+                                return RedirectToPage("/TwoFactor", new { ReturnUrl, Remember = true, Token });
+                            }
+                            else if (resul.IsNotAllowed)
+                            {
+                                // If account is not verified
+                                Error = "Debes verificar tu cuenta, por favor revisa tu correo electronico";
+                                AllowBack = true;
+                                return Page();
+                            }
+                            else
+                            {
+                                Error = $"Se produjo un error al obtener tus datos de {info.ProviderDisplayName}.";
+                                AllowBack = true;
+                                return Page();
+                            }
                         }
                     }
                     else
@@ -139,28 +156,90 @@ public class ExternalLogin : PageModel
                         }
                         return Page();
                     }
+
+
+
                 }
                 else
+                // If the user dont have any account with this email, we create a new user
                 {
-                    // Errors creating user
-                    foreach (var error in result.Errors)
+                    // Create a new external account
+                    user = ApplicationUser.CreateExternalUser(email);
+                    // Add Profile claims
+                    if (!string.IsNullOrEmpty(info.Principal.FindFirstValue(ClaimTypes.Name)))
                     {
-                        Error = error.Description;
-                        break;
+                        string name = info.Principal.FindFirstValue(ClaimTypes.GivenName)!;
+                        string surname = info.Principal.FindFirstValue(ClaimTypes.Surname)!;
+                        PersonName personName = new(name, surname);
+                        user.CreateProfile(personName);
+                        if (!string.IsNullOrEmpty(info.Principal.FindFirstValue("image")))
+                        {
+                            user.Profile!.AddProfileImage(info.Principal.FindFirstValue("Image")!);
+                        }
                     }
-                    return Page();
+                    // save in database
+                    var result = await _userManager.CreateAsync(user);
+                    if (result.Succeeded)
+                    {
+                        // Aggreagate a rol, bydeafult an application role
+                        bool role = await _roleManager.RoleExistsAsync(DefaultRoles.ApplicationUser);
+                        if (role) await _userManager.AddToRoleAsync(user, DefaultRoles.ApplicationUser);
+                        else await _userManager.AddToRoleAsync(user, DefaultRoles.DefaultUser);
+
+
+                        // save the provider
+                        result = await _userManager.AddLoginAsync(user, info);
+                        if (result.Succeeded)
+                        {
+                            var Result = await _signInManager.ExternalLoginSignInAsync(info.LoginProvider, info.ProviderKey, isPersistent: false);
+
+                            if (Result.Succeeded)
+                            {
+                                await _emailSender.SendWelcome(email);
+                                if (user.PhoneNumber is null || user.NormalizedUserName == user.NormalizedEmail) return RedirectToPage("/QuickStartProfile", new { ReturnUrl });
+                                else if (user.PhoneNumber is not null && !user.PhoneNumberConfirmed) return RedirectToPage("/ConfirmPhone", new { ReturnUrl });
+                                else return new RedirectResult(ReturnUrl);
+                            }
+                            else
+                            {
+                                Error = $"Se produjo un error al obtener tus datos de {info.ProviderDisplayName}.";
+                                AllowBack = true;
+                                return Page();
+                            }
+                        }
+                        else
+                        {
+                            // if there is any error saving the provider
+                            foreach (var error in result.Errors)
+                            {
+                                Error = error.Description;
+                                break;
+                            }
+                            return Page();
+                        }
+                    }
+                    else
+                    {
+                        // Errors creating user
+                        foreach (var error in result.Errors)
+                        {
+                            Error = error.Description;
+                            break;
+                        }
+                        return Page();
+                    }
                 }
             }
             else
             {
+                // User already have and account
                 if (user.Status != UserStatus.Active)
                 {
-                    Error = $"La cuenta '{user.Email!.Substring(0,4)}######' no está activa. Comunicate con soporte";
+                    Error = $"La cuenta {HideString.HideEmail(user.Email!)} no está activa. Comunicate con soporte";
                     return Page();
                 }
                 else
                 {
-                    // User already have and account
                     var result = await _signInManager.ExternalLoginSignInAsync(info.LoginProvider, info.ProviderKey, isPersistent: false);
                     if (result.Succeeded)
                     {
@@ -171,7 +250,21 @@ public class ExternalLogin : PageModel
                     }
                     else if (result.RequiresTwoFactor)
                     {
-                        return RedirectToPage("/TwoFactor", new { ReturnUrl});
+                        string Code;
+                        string Token;
+                        if (user.PhoneNumber is null || !user.PhoneNumberConfirmed)
+                        {
+                            Token = "Email";
+                            Code = await _userManager.GenerateTwoFactorTokenAsync(user, Token);
+                            await _smsSender.PhoneConfirmation(user.Email!, Code);
+                        }
+                        else
+                        {
+                            Token = "Phone";
+                            Code = await _userManager.GenerateTwoFactorTokenAsync(user, Token);
+                            await _smsSender.PhoneConfirmation(user.Email!, Code);
+                        }
+                        return RedirectToPage("/TwoFactor", new { ReturnUrl, Remember = true, Token });
                     }
                     else if (result.IsNotAllowed)
                     {

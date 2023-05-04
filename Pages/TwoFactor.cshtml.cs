@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using IdentityProvider.Entity;
 using IdentityProvider.Enumerables;
+using IdentityProvider.Helper;
 using IdentityProvider.Interface;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -9,6 +10,7 @@ using SignInResult = Microsoft.AspNetCore.Identity.SignInResult;
 
 namespace IdentityProvider.Pages
 {
+    [ValidateAntiForgeryToken]
     public class TwoFactor : PageModel
     {
         private readonly SignInManager<ApplicationUser> _signInManager;
@@ -34,7 +36,7 @@ namespace IdentityProvider.Pages
             _signInManager = singIn;
         }
 
-        public async Task<IActionResult> OnGet(string returnUrl, bool? remember = null)
+        public async Task<IActionResult> OnGet(string returnUrl, bool? remember = null, string? token = null)
         {
             if (string.IsNullOrEmpty(returnUrl)) return Redirect("/Signin");
             else ReturnUrl = returnUrl;
@@ -50,24 +52,37 @@ namespace IdentityProvider.Pages
             }
             else
             {
-                string Code;
-                if (user.PhoneNumber is null || !user.PhoneNumberConfirmed)
+                if (token is not null)
                 {
-                    Code = await _userManager.GenerateTwoFactorTokenAsync(user, "Email");
-                    await _smsSender.PhoneConfirmation(user.Email!, Code);
-                    CodeSent = $"Hemos enviado el codigo de verificacion a su correo electronico {user.Email!.Substring(0, 4)}######";
+                    switch (token)
+                    {
+                        case "Email":
+                            CodeSent = $"Hemos enviado el codigo de verificacion a su correo electronico {HideString.HideEmail(user.Email!)}";
+                            break;
+                        case "Phone":
+                            if (user.PhoneNumber is not null)
+                            {
+                                CodeSent = $"Hemos enviado el codigo de verificacion a su numero de telefono {HideString.HidePhone(user.PhoneNumber)}";
+                            }
+                            else
+                            {
+                                CodeSent = $"Hemos enviado el codigo de verificacion, por favor revise su email o su numero de telefono";
+                            }
+                            break;
+                        default:
+                            CodeSent = $"Hemos enviado el codigo de verificacion, por favor revise su email o su numero de telefono";
+                            break;
+                    }
                 }
                 else
                 {
-                    Code = await _userManager.GenerateTwoFactorTokenAsync(user, "Phone");
-                    await _smsSender.PhoneConfirmation(user.Email!, Code);
-                    CodeSent = $"Hemos enviado el codigo de verificacion a su numero de telefono  {user.PhoneNumber!.Substring(0, 4)}######";
+                    CodeSent = $"Hemos enviado el codigo de verificacion, por favor revise su email o su numero de telefono";
                 }
                 return Page();
             }
         }
 
-        public async Task<IActionResult> OnPost(string returnUrl, bool? remember = null)
+        public async Task<IActionResult> OnPostToContinue(string returnUrl, bool? remember = null)
         {
             if (string.IsNullOrEmpty(returnUrl)) return Redirect("/Signin");
             else ReturnUrl = returnUrl;
@@ -87,7 +102,7 @@ namespace IdentityProvider.Pages
                     // if user is not active dont let him login
                     if (user.Status != UserStatus.Active)
                     {
-                        Error = $"La cuenta '{user.Email}' no está activa. Comunicate con soporte";
+                        Error = $"La cuenta '{HideString.HideEmail(user.Email!)}' no está activa. Comunicate con soporte";
                         return Page();
                     }
                     string authenticatorCode = Code.Replace(" ", string.Empty).Replace("-", string.Empty).Trim();
@@ -129,6 +144,39 @@ namespace IdentityProvider.Pages
                         Error = modelError.Value.Errors.First().ErrorMessage.ToString();
                         break;
                     }
+                }
+                return Page();
+            }
+        }
+
+        public async Task<IActionResult> OnPostToResend(string returnUrl, bool? remember, string? token = null)
+        {
+            if (string.IsNullOrEmpty(returnUrl)) return Redirect("/Signin");
+            else ReturnUrl = returnUrl;
+            if (remember != null) Remember = (bool)remember;
+            else Remember = false;
+            ApplicationUser? user = await _signInManager.GetTwoFactorAuthenticationUserAsync();
+            if (user == null)
+            {
+                return Redirect("/Signin");
+            }
+            else
+            {
+                string Code;
+                string Token;
+                if (user.PhoneNumber is null || !user.PhoneNumberConfirmed)
+                {
+                    Token = "Email";
+                    Code = await _userManager.GenerateTwoFactorTokenAsync(user, Token);
+                    await _smsSender.PhoneConfirmation(user.Email!, Code);
+                    CodeSent = $"Hemos enviado el codigo de verificacion a su correo electronico {HideString.HideEmail(user.Email!)}";
+                }
+                else
+                {
+                    Token = "Phone";
+                    Code = await _userManager.GenerateTwoFactorTokenAsync(user, Token);
+                    await _smsSender.PhoneConfirmation(user.Email!, Code);
+                    CodeSent = $"Hemos enviado el codigo de verificacion a su numero de telefono {HideString.HidePhone(user.PhoneNumber)}";
                 }
                 return Page();
             }

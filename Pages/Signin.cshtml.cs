@@ -9,9 +9,11 @@ using IdentityProvider.Options;
 using Microsoft.AspNetCore.Authentication;
 using IdentityProvider.Interface;
 using IdentityProvider.Enumerables;
+using IdentityProvider.Helper;
 
 namespace IdentityProvider.Pages;
 
+[ValidateAntiForgeryToken]
 public class SignInModel : PageModel
 {
     private readonly SignInManager<ApplicationUser> _signIn;
@@ -68,7 +70,7 @@ public class SignInModel : PageModel
                     // Delete all their cookies
                     await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
                     await HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
-                    Error = $"La cuenta '{user.Email!.Substring(0,4)}#####' no está activa. Comunicate con soporte";
+                    Error = $"La cuenta {HideString.HideEmail(user.Email!)} no está activa. Comunicate con soporte";
                 }
                 else
                 {
@@ -135,7 +137,7 @@ public class SignInModel : PageModel
                 // if user is not active dont let him login
                 if (user.Status != UserStatus.Active)
                 {
-                    Error = $"La cuenta '{user.Email}' no está activa. Comunicate con soporte";
+                    Error = $"La cuenta {HideString.HideEmail(user.Email!)} no está activa. Comunicate con soporte";
                     return Page();
                 }
                 // If the password is null, this meand the user has been authenticated with a social provider
@@ -178,7 +180,7 @@ public class SignInModel : PageModel
                     }
                 }
                 // Authenticate user with password
-                var result = await _signIn.PasswordSignInAsync(user, Login.Password, Login.Remember,false);
+                var result = await _signIn.PasswordSignInAsync(user, Login.Password, Login.Remember, false);
                 // If auth is succeed redirect user to corresponde page
                 if (result.Succeeded)
                 {
@@ -193,9 +195,24 @@ public class SignInModel : PageModel
                     // Show an erro messsage 
                     Error = "Debes verificar tu cuenta, por favor revisa tu correo electronico";
                     return Page();
-                }else if(result.RequiresTwoFactor)
+                }
+                else if (result.RequiresTwoFactor)
                 {
-                    return RedirectToPage("/TwoFactor", new { ReturnUrl, Remember = Login.Remember });
+                    string Code;
+                    string Token;
+                    if (user.PhoneNumber is null || !user.PhoneNumberConfirmed)
+                    {
+                        Token = "Email";
+                        Code = await _userManager.GenerateTwoFactorTokenAsync(user, Token);
+                        await _smsSender.PhoneConfirmation(user.Email!, Code);
+                    }
+                    else
+                    {
+                        Token = "Phone";
+                        Code = await _userManager.GenerateTwoFactorTokenAsync(user, Token);
+                        await _smsSender.PhoneConfirmation(user.Email!, Code);
+                    }
+                    return RedirectToPage("/TwoFactor", new { ReturnUrl, Remember = Login.Remember, Token });
                 }
                 else
                 {

@@ -1,13 +1,16 @@
+using System.Text;
 using IdentityProvider.Entity;
+using IdentityProvider.Helper;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.WebUtilities;
 
 namespace IdentityProvider.Pages
 {
+	[ValidateAntiForgeryToken]
 	public class ConfirmationModel : PageModel
 	{
-		public string? Email { get; set; }
 		private readonly UserManager<ApplicationUser> _userManager;
 		public string ReturnUrl {get;set;} = string.Empty;
 		public ConfirmationModel(UserManager<ApplicationUser> userManager)
@@ -15,7 +18,7 @@ namespace IdentityProvider.Pages
 			_userManager = userManager;
 		}
 
-		public async Task<IActionResult> OnGet(string email,string returnUrl)
+		public async Task<IActionResult> OnGet(string ue,string returnUrl)
 		{
 			if(string.IsNullOrEmpty(returnUrl)) {
 				return Redirect("/Signin");
@@ -24,17 +27,17 @@ namespace IdentityProvider.Pages
 				ReturnUrl = returnUrl;
 			}
 
-			if (email == null)
+			if (ue == null)
 			{
 				return RedirectToPage("/Signin",new { ReturnUrl});
 			}
-			var user = await _userManager.FindByEmailAsync(email);
+			var userId = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(ue));
+			var user = await _userManager.FindByIdAsync(userId);
 			if (user == null)
 			{
-				return NotFound($"No pudimos cargar al usuario '{email}'.");
+				return NotFound($"No pudimos cargar al usuario.");
 			}
 
-			Email = email;
 			return Page();
 		}
 		public IActionResult OnPostToSignIn(string url)

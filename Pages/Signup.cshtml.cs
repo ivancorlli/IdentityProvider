@@ -12,6 +12,7 @@ using IdentityProvider.Constant;
 
 namespace IdentityProvider.Pages
 {
+    [ValidateAntiForgeryToken]
     public class SignupModel : PageModel
     {
         [BindProperty]
@@ -78,7 +79,7 @@ namespace IdentityProvider.Pages
                         pageHandler: null,
                         values: new
                         {
-                            UserId,
+                            UE = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(UserId.ToString())),
                             Code,
 							ReturnUrl = returnUrl,
                             Exp = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(Exp.ToString())),
@@ -90,7 +91,7 @@ namespace IdentityProvider.Pages
                     // Send confirmation email
                     await _emailSender.SendConfirmationEmail(user.Email.ToString(), callback!);
                     ModelState.Clear();
-                    return RedirectToPage("/SignupConfirmation", new { Email = user.Email.ToString(), ReturnUrl });
+                    return RedirectToPage("/SignupConfirmation", new { UE = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(user.Id.ToString())), ReturnUrl });
                 }
                 else
                 {
