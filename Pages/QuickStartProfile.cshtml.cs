@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using System.Text;
 using IdentityProvider.Constant;
 using IdentityProvider.Entity;
 using IdentityProvider.Interface;
@@ -10,7 +9,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.AspNetCore.WebUtilities;
 
 namespace IdentityProvider.Pages
 {
@@ -20,15 +18,16 @@ namespace IdentityProvider.Pages
 
         [BindProperty]
         public ProfileModel Profile { get; set; } = new();
-
+        private readonly ISmsSender _smsSender;
         private readonly ApplicationManager _userManager;
         public string ReturnUrl { get; set; } = string.Empty;
         public string DefaultImage { get; set; } = string.Empty;
         public string Error { get; set; } = string.Empty;
 
-        public QuickStartProfile(ApplicationManager userManager)
+        public QuickStartProfile(ApplicationManager userManager,ISmsSender smsSender)
         {
             _userManager = userManager;
+            _smsSender = smsSender;
         }
 
         public async Task<IActionResult> OnGetAsync(string returnUrl)
@@ -115,6 +114,8 @@ namespace IdentityProvider.Pages
                             Error = result.Errors.First().Description;
                             return Page();
                         }
+                        string Code = await _userManager.GenerateChangePhoneNumberTokenAsync(user, user.PhoneNumber!);
+                        await _smsSender.PhoneConfirmation(user.Email!, Code);
                         return RedirectToPage("/ConfirmPhone", new { ReturnUrl });
                     }
                     else
