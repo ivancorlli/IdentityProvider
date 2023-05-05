@@ -15,7 +15,7 @@
 					foreach (var provider in Model.ExternalLogins)
 					{
 						<form id="external-account" asp-page="/ExternalLogin" asp-route-returnUrl="@Model.ReturnUrl" method="post"
-			class="row my-2 justify-content-center">
+							class="row my-2 justify-content-center">
 							<div>
 								@{
 									switch (provider.DisplayName)
@@ -24,18 +24,18 @@
 											<button type="submit" class="w-100 btn btn-outline-secondary google text-center rounded-pill"
 												name="provider" value="@provider.Name">
 												<i class="fa-brands fa-google"></i>
-												<span class="mx-3 fs-6 fw-normal"> Continuar con google</span>
+												<span class="mx-3 fs-6 fw-normal text-end"> Continuar con google</span>
 											</button>
 											break;
 										case "Facebook":
 											<button type="submit" class="w-100 btn btn-primary facebook text-center rounded-pill"
 												name="provider" value="@provider.Name">
-												<i class="fa-brands fa-facebook-f"></i>
-												<span class="mx-3 fs-6 fw-normal"> Continuar con facebook</span>
+												<i class="fa-brands fa-facebook-f "></i>
+												<span class="mx-3 fs-6 fw-normal text-end"> Continuar con facebook</span>
 											</button>
 											break;
 										default:
-											<button type="submit" class="w-100 btn btn-primary text-center rounded-pill" name="provider"
+											<button type="submit" class="w-100 btn btn-primary text-start rounded-pill" name="provider"
 												value="@provider.Name">
 												<span> Continuar con @provider.DisplayName!.ToLower()</span>
 											</button>
@@ -58,30 +58,33 @@
 			</div>
 
 			<div class="login-form">
-				<span class="fs-2">Iniciar Sesión</span>
+				<span class="fs-2 my-2">Iniciar Sesión</span>
 				<div class="p-0 w-100 login-form">
-					<form method="post">
-						@{
-							if (!string.IsNullOrEmpty(Model.Error))
-							{
-								<div class="alert alert-danger" role="alert">
-									@Model.Error
-								</div>
-							}
+					@{
+						if (!string.IsNullOrEmpty(Model.Error))
+						{
+							<div class="alert alert-danger" role="alert">
+								@Model.Error
+							</div>
 						}
+					}
+					<form method="post">
+						<div asp-validation-summary="ModelOnly" class="text-danger" role="alert"></div>
 						<div class="form-floating mb-3">
-							<input type="text" asp-for="Login.Email" class="form-control" autocomplete="on"
-								aria-required="true" />
+							<input asp-for="Login.Email" class="form-control" autocomplete="on" aria-required="true" />
 							<label asp-for="Login.Email" class="form-label"></label>
+							<span asp-validation-for="Login.Email" class="text-danger"></span>
 						</div>
 						<div class="form-floating mb-3">
-							<input asp-for="Login.Password" class="form-control" aria-required="true"
-								autocomplete="current-password" />
+							<input asp-for="Login.Password" class="form-control" autocomplete="current-password"
+								aria-required="true" type="password" />
 							<label asp-for="Login.Password" class="form-label"></label>
+							<span asp-validation-for="Login.Password" class="text-danger"></span>
 							<div>
 								@{
 									var link = $"/ForgotPassword?ReturnUrl={Uri.EscapeDataString(Model.ReturnUrl!)}";
-									<a href="@link" class="text-black custom-link text-end ">Olvidaste tu contraseña?</a>
+									<a href="@link" class="text-black custom-link text-end ">olvidaste tu
+										contraseña?</a>
 								}
 							</div>
 						</div>
@@ -97,8 +100,18 @@
 					</form>
 				</div>
 			</div>
+			@{
+				var terms = $"/Terms?ReturnUrl={Model.ReturnUrl}";
+				var privacy = $"/Privacy?ReturnUrl={Model.ReturnUrl}";
+				<div class="mt-4 mb-0 text-center">
+					<p class="description text-muted">
+						Al iniciar sesion con email, google o facebook aceptas <a href="@terms">nuestros términos de uso</a>
+						y <a href="@privacy">políticas de privacidad</a>.
+					</p>
+				</div>
+			}
 
-			<div class="row mt-5 mb-3 justify-content-center align-items-center text-center ">
+			<div class="row mt-2 mb-3 justify-content-center align-items-center text-center ">
 				<div class="col-3 flex-grow-1">
 					<div class="border border-bottom-1 border-gray"></div>
 				</div>

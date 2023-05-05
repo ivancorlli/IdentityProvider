@@ -5,16 +5,16 @@ namespace IdentityProvider.Pages.Model;
 public class ModelResetPassword
 {
 
-	[Required(ErrorMessage ="Contraseña requerida")]
+	[Required(ErrorMessage ="Campo requerido.")]
 	[Display(Name="Contraseña")]
-	[StringLength(100, ErrorMessage = "The {0} must be at least {2} and at max {1} characters long.", MinimumLength = 6)]
+	[StringLength(25, ErrorMessage = "La contraseña debe tener entre 6 y 25 caracteres.", MinimumLength = 6)]
 	[DataType(DataType.Password)]
 	public string Password { get; set; } = default!;
 
 	[DataType(DataType.Password)]
 	[Display(Name = "Confirmar contraseña")]
-	[Compare("Password", ErrorMessage = "The password and confirmation password do not match.")]
-	[Required(ErrorMessage ="Confirmar contraseña requerida")]
+	[Compare("Password", ErrorMessage = "Las contraseñas no coinciden.")]
+	[Required(ErrorMessage ="Campo requerido.")]
 	public string ConfirmPassword { get; set; } =default!;
 
 }

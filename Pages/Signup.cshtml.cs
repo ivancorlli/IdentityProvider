@@ -54,7 +54,11 @@ namespace IdentityProvider.Pages
         {
 			ReturnUrl = returnUrl;
             
-            if (ModelState.IsValid)
+            if (!ModelState.IsValid)
+            {
+                return Page();
+            }
+            else 
             {
                 // Create a new user and give him some credentials, it's very important to initialize it with false for 'IsAuthenticatedExternaly', It's set TwoFactor authentication enabled for default.
 				ApplicationUser user = ApplicationUser.CreateLocalUser(Register.Email);
@@ -95,33 +99,25 @@ namespace IdentityProvider.Pages
                 }
                 else
                 {
-                    foreach (var error in result.Errors)
-                    {
+                    foreach (var error in result.Errors) {
                         if(error.Code == "DuplicateUserName")
                         {
-                            Error = $"El correo electrónico '{Register.Email}' ya ha sido registrado.";
+                            Error = $"El correo electrónico ingresado ya ha sido registrado.";
                         }else if(error.Code == "DuplicateEmail"){
-                            Error = $"El correo electrónico '{Register.Email}' ya ha sido registrado.";
+                            Error = $"El correo electrónico ingresado ya ha sido registrado.";
+                        }else if (error.Code == "PasswordRequiresLower"){
+                            Error = "La contrseña debe contener minusculas.";
+                        }else if (error.Code == "PasswordRequiresUpper")
+                        {
+                            Error = "La contraseña debe contener mayusculas.";
                         }else {
                             Error = error.Description;
                         }
                         break;
                     }
+                    return Page();
                 }
             }
-            else
-            {
-                foreach (var modelError in ModelState)
-                {
-                    if (modelError.Value.Errors.Count > 0)
-                    {
-                        Error = modelError.Value.Errors.First().ErrorMessage.ToString();
-                        break;
-                    }
-                }
-                return Page();
-            }
-            return Page();
         }
 
         public IActionResult OnPostToSignIn(string url)

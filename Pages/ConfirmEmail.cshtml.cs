@@ -56,16 +56,28 @@ public class ConfirmEmailModel : PageModel
 			long Now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 			if(Now > ExpirationTime)
 			{
-				ErrorMessage = "Verificacion expirada";
+				ErrorMessage = "Verificacion expirada.";
 				if (!user.EmailConfirmed) Resend = true;
 				return Page();
 			}
 			code = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(code));
 			IdentityResult result = await _userManager.ConfirmEmailAsync(user, code);
-			StatusMessage = result.Succeeded ? "Gracias por confirmar tu email" : "Se produjo un error al confirmar el email";
+			
+			if(result.Succeeded)
+			{
+				StatusMessage = "Gracias por confirmar tu email.";
+				
+			}else {
+				if(result.Errors.Count() > 0)
+				{
+					ErrorMessage = result.Errors.First().Description;
+				}else {
+					ErrorMessage = "Se produjo un error al confirmar el email";
+				}
+			}
 			return Page();
 		}else {
-			ErrorMessage = "Verificacion expirada";
+			ErrorMessage = "Verificacion expirada.";
 			if (!user.EmailConfirmed) Resend = true;
 			return Page();
 		}
@@ -97,7 +109,7 @@ public class ConfirmEmailModel : PageModel
 					UE=WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(user.Id)),
 					Code,
 					ReturnUrl=url,
-					Exp = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(Exp.ToString())),
+                    Exp = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(Exp.ToString())),
 				},
 				protocol: Request.Scheme
 				)!;

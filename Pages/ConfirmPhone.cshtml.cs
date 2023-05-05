@@ -19,21 +19,23 @@ public class ConfirmPhone : PageModel
     private readonly ISmsSender _smsSender;
 
     [BindProperty]
-    [Display(Name = "Codigo de verificacion")]
-    [Required(ErrorMessage = "Codigo de verificacion requerido")]
-    [MaxLength(8, ErrorMessage = "El codigo de verificacion no puede tener mas de 8 digitos")]
-    [MinLength(6, ErrorMessage = "El codigo de verificacion no puede tener menos de 5 digitos")]
+    [Display(Name = "Código de verificación")]
+    [Required(ErrorMessage = "Código de verificación requerido")]
+    [MaxLength(8, ErrorMessage = "El código de verificación no puede tener mas de 8 digitos")]
+    [MinLength(6, ErrorMessage = "El código de verificación no puede tener menos de 5 digitos")]
     public string Code { get; set; } = string.Empty;
     [BindProperty]
     [Display(Name = "Número de teléfono")]
     [Phone(ErrorMessage = "Número de teléfono invalido")]
     [Required(ErrorMessage = "Número de teléfono requerido")]
-    [MaxLength(20, ErrorMessage = "El número de teléfono no puede tener mas de 20 digitos")]
+    [StringLength(20, ErrorMessage = "El número de teléfono debe tener entre 5 y 20 digitos", MinimumLength = 5)]
     public string PhoneNumber { get; set; } = string.Empty;
     public string Error { get; set; } = string.Empty;
     public string ReturnUrl { get; set; } = string.Empty;
     public bool AllowChange { get; set; } = false;
     public string AllowTitle { get; set; } = string.Empty;
+    private const string VerificarTitle = "Verificar Teléfono";
+    private const string UpdateTitle = "Actualizar Teléfono";
 
     public ConfirmPhone(UserManager<ApplicationUser> userManager, ISmsSender smsSender)
     {
@@ -45,7 +47,7 @@ public class ConfirmPhone : PageModel
     {
         if (string.IsNullOrEmpty(returnUrl)) return Redirect("/Signin");
         else ReturnUrl = returnUrl;
-        AllowTitle = "Verificar numero de telefono";
+        AllowTitle = VerificarTitle;
         AuthenticateResult auth = await HttpContext.AuthenticateAsync(IdentityConstants.ApplicationScheme);
         if (auth.Succeeded)
         {
@@ -81,11 +83,14 @@ public class ConfirmPhone : PageModel
     {
         if (string.IsNullOrEmpty(returnUrl)) return Redirect("/Signin");
         else ReturnUrl = returnUrl;
-        AllowTitle = "Verificar numero de telefono";
+        AllowTitle = VerificarTitle;
         // Skip validations for PhoneNumber
-        if (IsModelValid("PhoneNumber"))
+        if (!IsModelValidExcept("PhoneNumber"))
         {
-
+            return Page();
+        }
+        else
+        {
             AuthenticateResult auth = await HttpContext.AuthenticateAsync(IdentityConstants.ApplicationScheme);
             if (auth.Succeeded)
             {
@@ -96,14 +101,20 @@ public class ConfirmPhone : PageModel
                     bool verified = await _userManager.VerifyChangePhoneNumberTokenAsync(user, Code, user.PhoneNumber!);
                     if (!verified)
                     {
-                        Error = "El codigo ingresado es invalido.";
+                        Error = "El código ingresado es invalido.";
                         return Page();
                     }
                     else
                     {
                         user.PhoneNumberConfirmed = true;
                         // by default use two factor 
-                        if (!user.IsAuthenticatedExternaly) user.UseTwoFactor();
+                        if (!user.IsAuthenticatedExternaly) 
+                        {
+                            if(!user.TwoFactorEnabled)
+                            {
+                                user.UseTwoFactor();
+                            }
+                        }
                         var result = await _userManager.UpdateAsync(user);
                         if (result.Errors.Count() > 0)
                         {
@@ -132,31 +143,20 @@ public class ConfirmPhone : PageModel
                 return RedirectToPage("/Signin", new { ReturnUrl });
             }
         }
-        else
-        {
-            foreach (var modelError in ModelState)
-            {
-                if (modelError.Value.Errors.Count > 0)
-                {
-                    Error = modelError.Value.Errors.First().ErrorMessage.ToString();
-                    break;
-                }
-            }
-            return Page();
-        }
     }
 
     public IActionResult OnPostToAllowChange(string returnUrl)
     {
         AllowChange = true;
-        AllowTitle = "Actualizar numero de telefono";
+        AllowTitle = UpdateTitle;
         ReturnUrl = returnUrl;
+        ModelState.Clear();
         return Page();
     }
 
     public async Task<IActionResult> OnPostToResend(string returnUrl)
     {
-        AllowTitle = "Verificar numero de telefono";
+        AllowTitle = VerificarTitle;
         ReturnUrl = returnUrl;
         AllowChange = false;
         AuthenticateResult auth = await HttpContext.AuthenticateAsync(IdentityConstants.ApplicationScheme);
@@ -172,6 +172,7 @@ public class ConfirmPhone : PageModel
                 {
                     string Code = await _userManager.GenerateChangePhoneNumberTokenAsync(user, user.PhoneNumber!);
                     await _smsSender.PhoneConfirmation(user.Email!, Code);
+                    ModelState.Clear();
                     return Page();
                 }
             }
@@ -194,19 +195,24 @@ public class ConfirmPhone : PageModel
 
     public IActionResult OnPostToCancel(string returnUrl)
     {
-        AllowTitle = "Verificar numero de telefono";
+        AllowTitle = VerificarTitle;
         AllowChange = false;
         ReturnUrl = returnUrl;
+        ModelState.Clear();
         return Page();
     }
 
     public async Task<IActionResult> OnPostToChangePhoneAsync(string returnUrl)
     {
-        AllowTitle = "Actualizar numero de telefono";
+        AllowTitle = UpdateTitle;
         AllowChange = true;
         ReturnUrl = returnUrl;
         // Skip validations for Code
-        if (IsModelValid("Code"))
+        if (!IsModelValidExcept("Code"))
+        {
+            return Page();
+        }
+        else
         {
             AuthenticateResult auth = await HttpContext.AuthenticateAsync(IdentityConstants.ApplicationScheme);
             if (auth.Succeeded)
@@ -217,7 +223,7 @@ public class ConfirmPhone : PageModel
                 {
                     if (PhoneNumber == user.PhoneNumber)
                     {
-                        Error = "No puedes utilizar el mismo numero de telefono.";
+                        Error = "No puedes utilizar el mismo número de teléfono.";
                         return Page();
                     }
 
@@ -229,7 +235,7 @@ public class ConfirmPhone : PageModel
                     }
                     string Code = await _userManager.GenerateChangePhoneNumberTokenAsync(user, PhoneNumber.Trim());
                     await _smsSender.PhoneConfirmation(user.Email!, Code);
-                    AllowTitle = "Verificar numero de telefono";
+                    AllowTitle = VerificarTitle;
                     AllowChange = false;
                     return Page();
                 }
@@ -249,23 +255,11 @@ public class ConfirmPhone : PageModel
                 return RedirectToPage("/Signin", new { ReturnUrl });
             }
         }
-        else
-        {
-            foreach (var modelError in ModelState)
-            {
-                if (modelError.Value.Errors.Count > 0)
-                {
-                    Error = modelError.Value.Errors.First().ErrorMessage.ToString();
-                    break;
-                }
-            }
-            return Page();
-        }
 
     }
 
 
-    private bool IsModelValid(string key)
+    private bool IsModelValidExcept(string key)
     {
         if (ModelState.IsValid)
         {
@@ -285,6 +279,7 @@ public class ConfirmPhone : PageModel
                     else
                     {
                         response = false;
+                        break;
                     }
                 }
             }

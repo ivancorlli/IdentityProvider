@@ -42,7 +42,7 @@ public class ResetPasswordModel : PageModel
         var user = await _userManager.FindByIdAsync(userId);
         if (user == null)
         {
-            Error = "Usuario inexistente";
+            Error = "Usuario inexistente.";
             return Page();
         }
         else if (!user.EmailConfirmed)
@@ -57,8 +57,9 @@ public class ResetPasswordModel : PageModel
             var Now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             if (Now > ExpirationTime)
             {
-                Error = "No puedes acceder a este recurso";
+                Error = "No puedes acceder a este recurso.";
                 Invalid = true;
+                AllowBack = true;
                 return Page();
             }
         }
@@ -110,11 +111,38 @@ public class ResetPasswordModel : PageModel
         {
             if (result.Errors.Count() > 0)
             {
-                Error = result.Errors.First().Description;
+                var error = result.Errors.First();
+                if (error.Code == "DuplicateUserName")
+                {
+                    Error = $"El correo electrónico ingresado ya ha sido registrado.";
+                }
+                else if (error.Code == "DuplicateEmail")
+                {
+                    Error = $"El correo electrónico ingresado ya ha sido registrado.";
+                }
+                else if (error.Code == "PasswordRequiresLower")
+                {
+                    Error = "La contrseña debe contener minusculas.";
+                }
+                else if (error.Code == "PasswordRequiresUpper")
+                {
+                    Error = "La contraseña debe contener mayusculas.";
+                }
+                else if (error.Code == "InvalidToken")
+                {
+
+                    Error = "No puedes acceder a este recurso.";
+                    Invalid = true;
+                    AllowBack = true;
+                }
+                else
+                {
+                    Error = error.Description;
+                }
             }
             else
             {
-                Error = "Se produjo un erro al actualizar contraseña";
+                Error = "Se produjo un erro al actualizar contraseña.";
 
             }
             return Page();

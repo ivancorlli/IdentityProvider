@@ -18,10 +18,10 @@ namespace IdentityProvider.Pages
         private readonly ISmsSender _smsSender;
 
         [BindProperty]
-        [Display(Name = "Codigo de verificacion")]
-        [Required(ErrorMessage = "Codigo de verificacion requerido")]
-        [MaxLength(8, ErrorMessage = "El codigo de verificacion no puede tener mas de 8 digitos")]
-        [MinLength(6, ErrorMessage = "El codigo de verificacion no puede tener menos de 5 digitos")]
+        [Display(Name = "Código de ingreso")]
+        [Required(ErrorMessage = "Código de ingreso requerido.")]
+        [MaxLength(8, ErrorMessage = "El código de ingreso no puede tener mas de 8 digitos")]
+        [MinLength(6, ErrorMessage = "El código de ingreso no puede tener menos de 5 digitos")]
         public string Code { get; set; } = string.Empty;
         public string CodeSent { get; set; } = string.Empty;
         public string Error { get; set; } = string.Empty;
@@ -57,26 +57,26 @@ namespace IdentityProvider.Pages
                     switch (token)
                     {
                         case "Email":
-                            CodeSent = $"Hemos enviado el codigo de verificacion a su correo electronico {HideString.HideEmail(user.Email!)}";
+                            CodeSent = $"Hemos enviado el código de ingreso a su correo electrónico {HideString.HideEmail(user.Email!)}.";
                             break;
                         case "Phone":
                             if (user.PhoneNumber is not null)
                             {
-                                CodeSent = $"Hemos enviado el codigo de verificacion a su numero de telefono {HideString.HidePhone(user.PhoneNumber)}";
+                                CodeSent = $"Hemos enviado el código de ingreso a su número de teléfono {HideString.HidePhone(user.PhoneNumber)}.";
                             }
                             else
                             {
-                                CodeSent = $"Hemos enviado el codigo de verificacion, por favor revise su email o su numero de telefono";
+                                CodeSent = $"Hemos enviado el código de ingreso, por favor revise su email o su número de teléfono.";
                             }
                             break;
                         default:
-                            CodeSent = $"Hemos enviado el codigo de verificacion, por favor revise su email o su numero de telefono";
+                            CodeSent = $"Hemos enviado el código de ingreso, por favor revise su email o su número de teléfono.";
                             break;
                     }
                 }
                 else
                 {
-                    CodeSent = $"Hemos enviado el codigo de verificacion, por favor revise su email o su numero de telefono";
+                    CodeSent = $"Hemos enviado el código de ingreso, por favor revise su email o su número de teléfono";
                 }
                 return Page();
             }
@@ -89,7 +89,11 @@ namespace IdentityProvider.Pages
             if (remember != null) Remember = (bool)remember;
             else Remember = false;
 
-            if (ModelState.IsValid)
+            if (!ModelState.IsValid)
+            {
+                return Page();
+            }
+            else
             {
 
                 ApplicationUser? user = await _signInManager.GetTwoFactorAuthenticationUserAsync();
@@ -102,7 +106,7 @@ namespace IdentityProvider.Pages
                     // if user is not active dont let him login
                     if (user.Status != UserStatus.Active)
                     {
-                        Error = $"La cuenta '{HideString.HideEmail(user.Email!)}' no está activa. Comunicate con soporte";
+                        Error = $"La cuenta '{HideString.HideEmail(user.Email!)}' no está activa. Comunicate con soporte.";
                         return Page();
                     }
                     string authenticatorCode = Code.Replace(" ", string.Empty).Replace("-", string.Empty).Trim();
@@ -125,27 +129,15 @@ namespace IdentityProvider.Pages
                     else if (result.IsNotAllowed)
                     {
                         // If account is not verified
-                        Error = "Debes verificar tu cuenta, por favor revisa tu correo electronico";
+                        Error = "Debes verificar tu cuenta, por favor revisa tu correo electrónico";
                         return Page();
                     }
                     else
                     {
-                        Error = "Se produjo un erro al iniciar sesion.";
+                        Error = "Se produjo un error al iniciar sesión.";
                         return Page();
                     }
                 }
-            }
-            else
-            {
-                foreach (var modelError in ModelState)
-                {
-                    if (modelError.Value.Errors.Count > 0)
-                    {
-                        Error = modelError.Value.Errors.First().ErrorMessage.ToString();
-                        break;
-                    }
-                }
-                return Page();
             }
         }
 
@@ -169,14 +161,15 @@ namespace IdentityProvider.Pages
                     Token = "Email";
                     Code = await _userManager.GenerateTwoFactorTokenAsync(user, Token);
                     await _smsSender.PhoneConfirmation(user.Email!, Code);
-                    CodeSent = $"Hemos enviado el codigo de verificacion a su correo electronico {HideString.HideEmail(user.Email!)}";
+                    CodeSent = $"Hemos enviado el código de ingreso a su correo electrónico {HideString.HideEmail(user.Email!)}";
                 }
                 else
                 {
                     Token = "Phone";
                     Code = await _userManager.GenerateTwoFactorTokenAsync(user, Token);
                     await _smsSender.PhoneConfirmation(user.Email!, Code);
-                    CodeSent = $"Hemos enviado el codigo de verificacion a su numero de telefono {HideString.HidePhone(user.PhoneNumber)}";
+                    CodeSent = $"Hemos enviado el código de ingreso a su número de teléfono {HideString.HidePhone(user.PhoneNumber)}";
+                    ModelState.Clear();
                 }
                 return Page();
             }

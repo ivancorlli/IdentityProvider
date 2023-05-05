@@ -1,16 +1,16 @@
 @page "/TwoFactor"
 @model IdentityProvider.Pages.TwoFactor
 @{
-    ViewData["Title"] = "Confirmar número de telefono";
+    ViewData["Title"] = "Confirmar Ingreso";
 }
 
 <div class="vh-100 row justify-content-center align-items-center">
     <div class="col col-md-4 justify-content-center">
-        <span class="fs'3 my-2">Ingresar codigo</span>
+        <span class="fs-3 my-2">Ingresar codigo</span>
         @{
             if (!string.IsNullOrEmpty(Model.Error))
             {
-                <div class="alert alert-danger" role="alert">
+                <div class="alert alert-danger my-1" role="alert">
                     @Model.Error
                 </div>
             }
@@ -18,7 +18,7 @@
         @{
             if (!string.IsNullOrEmpty(Model.CodeSent))
             {
-                <div class="alert alert-success" role="alert">
+                <div class="alert alert-success my-1" role="alert">
                     @Model.CodeSent
                 </div>
             }
@@ -27,8 +27,13 @@
             <form method="post" class="my-3" asp-page-handler="ToContinue" asp-route-ReturnUrl="@Model.ReturnUrl"
                 asp-route-Remember="@Model.Remember">
                 <div class="form-floating">
-                    <input asp-for="Code" class="form-control" aria-required="true" type="text" />
-                    <label asp-for="Code" class="form-label"></label>
+                    <div asp-validation-summary="ModelOnly" class="text-danger" role="alert"></div>
+                    <div class="form-floating mb-3">
+                        <input asp-for="Code" class="form-control" autocomplete="off" aria-required="true"
+                            type="text" />
+                        <label asp-for="Code" class="form-label"></label>
+                        <span asp-validation-for="Code" class="text-danger"></span>
+                    </div>
                 </div>
                 <div class="w-100 d-flex justify-content-between align-items-center">
                     <div class="my-2">

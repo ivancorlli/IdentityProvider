@@ -1,4 +1,5 @@
-﻿using System.Security.Claims;
+﻿using System.Net.Http.Headers;
+using System.Security.Claims;
 using IdentityProvider.Entity;
 using IdentityProvider.Pages.Model;
 using Microsoft.AspNetCore.Identity;
@@ -115,7 +116,11 @@ public class SignInModel : PageModel
         var list = await _signIn.GetExternalAuthenticationSchemesAsync();
         ExternalLogins = list.ToList();
         // If the model is valid we can login the user
-        if (ModelState.IsValid)
+        if (!ModelState.IsValid)
+        {
+           return Page(); 
+        }
+        else
         {
             // search user
             ApplicationUser? user;
@@ -229,19 +234,7 @@ public class SignInModel : PageModel
                 return Page();
             }
         }
-        else
-        {
-            // When the model is invalid show respective error message
-            foreach (var modelError in ModelState)
-            {
-                if (modelError.Value.Errors.Count > 0)
-                {
-                    Error = modelError.Value.Errors.First().ErrorMessage.ToString();
-                    break;
-                }
-            }
-            return Page();
-        }
+
     }
 
 

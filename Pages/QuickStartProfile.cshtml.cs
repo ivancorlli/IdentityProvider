@@ -82,7 +82,11 @@ public class QuickStartProfile : PageModel
         if (string.IsNullOrEmpty(returnUrl)) return Redirect("/Signin");
         else ReturnUrl = returnUrl;
 
-        if (ModelState.IsValid)
+        if (!ModelState.IsValid)
+        {
+            return Page();
+        }
+        else
         {
             if (Profile.UserName.Contains("@"))
             {
@@ -134,18 +138,6 @@ public class QuickStartProfile : PageModel
                 await HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
                 return RedirectToPage("/Signin", new { ReturnUrl });
             }
-        }
-        else
-        {
-            foreach (var modelError in ModelState)
-            {
-                if (modelError.Value.Errors.Count > 0)
-                {
-                    Error = modelError.Value.Errors.First().ErrorMessage.ToString();
-                    break;
-                }
-            }
-            return Page();
         }
 
     }

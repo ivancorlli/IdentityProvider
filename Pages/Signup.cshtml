@@ -8,8 +8,8 @@
 <div class="h-100">
     <div class="row h-100 align-items-center justify-content-center">
         <div class="col-md-6 col-lg-5">
-            <div class="login-form">
-                <span class="fs-2 my-3">Crear Cuenta</span>
+            <span class="fs-2 my-2">Crear Cuenta</span>
+            <div class="p-0 login-form">
                 @{
                     if (!string.IsNullOrEmpty(Model.Error))
                     {
@@ -19,24 +19,42 @@
                     }
                 }
                 <form method="post">
-                    <div class="mb-3">
-                        <label for="email" class="form-label">Correo electrónico</label>
-                        <input type="email" class="form-control" autocomplete="email"  id="email" placeholder="" asp-for="Register.Email">
+                    <div asp-validation-summary="ModelOnly" class="text-danger" role="alert"></div>
+                    <div class="form-floating">
+                        <input asp-for="Register.Email" class="form-control" autocomplete="email" aria-required="true"
+                            type="email" />
+                        <label asp-for="Register.Email" class="form-label"></label>
+                        <span asp-validation-for="Register.Email" class="text-danger"></span>
                     </div>
-                    <div class="mb-3">
-                        <label for="password" class="form-label">Contrseña</label>
-                        <input type="password" class="form-control" autocomplete="new-password" id="password" asp-for="Register.Password">
+                    <div class="form-floating my-3">
+                        <input asp-for="Register.Password" class="form-control" autocomplete="new-password"
+                            aria-required="true" type="password" />
+                        <label asp-for="Register.Password" class="form-label"></label>
+                        <span asp-validation-for="Register.Password" class="text-danger"></span>
                     </div>
-                    <div class="mb-3">
-                        <label for="confirm-password" class="form-label">Confirmar contrseña</label>
-                        <input type="password" class="form-control" autocomplete="on" id="confirm-password"
-                            asp-for="Register.ConfirmPassword">
+                    <div class="form-floating">
+                        <input asp-for="Register.ConfirmPassword" class="form-control" autocomplete="current-password"
+                            aria-required="true" type="password" />
+                        <label asp-for="Register.ConfirmPassword" class="form-label"></label>
+                        <span asp-validation-for="Register.ConfirmPassword" class="text-danger"></span>
                     </div>
-                    <button type="submit" class="btn btn-primary btn-block">Crear cuenta</button>
+                    <div class="my-3">
+                        <button type="submit" class="btn btn-primary btn-block">Crear cuenta</button>
+                    </div>
                 </form>
             </div>
+            @{
+                var terms = $"/Terms?ReturnUrl={Model.ReturnUrl}";
+                var privacy = $"/Privacy?ReturnUrl={Model.ReturnUrl}";
+                <div class="mt-4 text-center">
+                    <p class="description text-muted">
+                        Al hacer click en crear cuenta aceptas <a href="@terms">nuestros términos de uso</a> y <a
+                            href="@privacy">políticas de privacidad</a>.
+                    </p>
+                </div>
+            }
 
-            <div class="row mt-5 mb-3 justify-content-center align-items-center text-center ">
+            <div class="row mt-2 mb-3 justify-content-center align-items-center text-center ">
                 <div class="col-3 flex-grow-1">
                     <div class="border border-bottom-1 border-gray"></div>
                 </div>
@@ -50,7 +68,8 @@
             </div>
             <form class="row my-3 justify-content-center" method="post" asp-page-handler="ToSignIn"
                 asp-route-url="@Model.ReturnUrl">
-                <button class="w-75 btn btn-outline-secondary custom-btn fw-bold rounded-pill" type="submit">Iniciar Sesión</button>
+                <button class="w-75 btn btn-outline-secondary custom-btn fw-bold rounded-pill" type="submit">Iniciar
+                    Sesión</button>
             </form>
         </div>
     </div>

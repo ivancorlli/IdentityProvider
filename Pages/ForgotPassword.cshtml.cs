@@ -51,7 +51,11 @@ public class RecoveryModel : PageModel
 
         ReturnUrl = returnUrl;
 
-        if (ModelState.IsValid)
+        if (!ModelState.IsValid)
+        {
+            return Page();
+        }
+        else
         {
             var user = await _userManager.FindByEmailAsync(Recovery.Email);
             if (user is null)
@@ -85,23 +89,23 @@ public class RecoveryModel : PageModel
                                 message += $"{provider.ProviderDisplayName}, ";
                             }
                         }
-                        Error = $"No puedes acceder a este recurso. Puedes iniciar sesion con {message}";
+                        Error = $"No puedes acceder a este recurso. Puedes iniciar sesion con {message}.";
                         return Page();
                     }
                     else
                     {
-                        Error = "Usuario inexistente";
+                        Error = "Usuario inexistente.";
                         return Page();
                     }
                 }
                 else
                 {
-                    Error = "Usuario inexistente";
+                    Error = "Usuario inexistente.";
                     return Page();
                 }
             }else if(user.Status != UserStatus.Active)
             {
-                Error = $"La cuenta {HideString.HideEmail(user.Email!)} no está activa. Comunicate con soporte";
+                Error = $"La cuenta {HideString.HideEmail(user.Email!)} no está activa. Comunicate con soporte.";
                 return Page();
             }
             else
@@ -125,13 +129,6 @@ public class RecoveryModel : PageModel
                 await _emailSender.SendResetPassword(user.Email!, callbackUrl);
                 return RedirectToPage("/ForgotPasswordConfirmation", new { ReturnUrl });
             }
-        }else {
-            foreach (var error in ModelState)
-                {
-                    Error = error.Value.Errors.First().ErrorMessage;
-                    break;
-                }
-				return Page();
         }
     }
 

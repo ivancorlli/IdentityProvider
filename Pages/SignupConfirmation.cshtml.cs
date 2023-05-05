@@ -1,6 +1,5 @@
 using System.Text;
 using IdentityProvider.Entity;
-using IdentityProvider.Helper;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -35,7 +34,7 @@ namespace IdentityProvider.Pages
 			var user = await _userManager.FindByIdAsync(userId);
 			if (user == null)
 			{
-				return NotFound($"No pudimos cargar al usuario.");
+				return RedirectToPage("/Signin",new { ReturnUrl});
 			}
 
 			return Page();

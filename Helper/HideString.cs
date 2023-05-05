@@ -10,7 +10,7 @@ public class HideString
         local = local[0].Split(email);
         string text = string.Empty;
         foreach (char st in local[1]) text += "*";
-        return $"{email}{text}{domain}";
+        return $"{email}{text}@{domain}";
     }
 
     public static string HidePhone(string Phone)
