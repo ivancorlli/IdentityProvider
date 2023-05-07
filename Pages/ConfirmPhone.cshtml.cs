@@ -36,6 +36,7 @@ public class ConfirmPhone : PageModel
     public string AllowTitle { get; set; } = string.Empty;
     private const string VerificarTitle = "Verificar Teléfono";
     private const string UpdateTitle = "Actualizar Teléfono";
+    public long ResendTime { get; set; } = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
     public ConfirmPhone(UserManager<ApplicationUser> userManager, ISmsSender smsSender)
     {
@@ -43,11 +44,19 @@ public class ConfirmPhone : PageModel
         _smsSender = smsSender;
     }
 
-    public async Task<IActionResult> OnGet(string returnUrl)
+    public async Task<IActionResult> OnGet(string returnUrl, long? ts)
     {
         if (string.IsNullOrEmpty(returnUrl)) return Redirect("/Signin");
         else ReturnUrl = returnUrl;
         AllowTitle = VerificarTitle;
+        if (ts is not null)
+        {
+            ResendTime = (long)ts;
+        }
+        else
+        {
+            ResendTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        }
         AuthenticateResult auth = await HttpContext.AuthenticateAsync(IdentityConstants.ApplicationScheme);
         if (auth.Succeeded)
         {
@@ -79,11 +88,19 @@ public class ConfirmPhone : PageModel
         }
     }
 
-    public async Task<IActionResult> OnPostToVerify(string returnUrl)
+    public async Task<IActionResult> OnPostToVerify(string returnUrl, long? ts)
     {
         if (string.IsNullOrEmpty(returnUrl)) return Redirect("/Signin");
         else ReturnUrl = returnUrl;
         AllowTitle = VerificarTitle;
+        if (ts is not null)
+        {
+            ResendTime = (long)ts;
+        }
+        else
+        {
+            ResendTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        }
         // Skip validations for PhoneNumber
         if (!IsModelValidExcept("PhoneNumber"))
         {
@@ -108,9 +125,9 @@ public class ConfirmPhone : PageModel
                     {
                         user.PhoneNumberConfirmed = true;
                         // by default use two factor 
-                        if (!user.IsAuthenticatedExternaly) 
+                        if (!user.IsAuthenticatedExternaly)
                         {
-                            if(!user.TwoFactorEnabled)
+                            if (!user.TwoFactorEnabled)
                             {
                                 user.UseTwoFactor();
                             }
@@ -145,20 +162,42 @@ public class ConfirmPhone : PageModel
         }
     }
 
-    public IActionResult OnPostToAllowChange(string returnUrl)
+    public IActionResult OnPostToAllowChange(string returnUrl, long? ts)
     {
         AllowChange = true;
         AllowTitle = UpdateTitle;
         ReturnUrl = returnUrl;
         ModelState.Clear();
+        if (ts is not null)
+        {
+            ResendTime = (long)ts;
+        }
+        else
+        {
+            ResendTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        }
+        ModelState.Clear();
         return Page();
     }
 
-    public async Task<IActionResult> OnPostToResend(string returnUrl)
+    public async Task<IActionResult> OnPostToResend(string returnUrl, long? ts)
     {
         AllowTitle = VerificarTitle;
         ReturnUrl = returnUrl;
         AllowChange = false;
+        if (ts is not null)
+        {
+            ResendTime = (long)ts;
+        }
+        else
+        {
+            ResendTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        }
+        if(ResendTime > DateTimeOffset.UtcNow.ToUnixTimeSeconds())
+        {
+            ModelState.Clear();
+            return Page();
+        }
         AuthenticateResult auth = await HttpContext.AuthenticateAsync(IdentityConstants.ApplicationScheme);
         if (auth.Succeeded)
         {
@@ -173,6 +212,7 @@ public class ConfirmPhone : PageModel
                     string Code = await _userManager.GenerateChangePhoneNumberTokenAsync(user, user.PhoneNumber!);
                     await _smsSender.PhoneConfirmation(user.Email!, Code);
                     ModelState.Clear();
+                    ExecTimer();
                     return Page();
                 }
             }
@@ -193,20 +233,37 @@ public class ConfirmPhone : PageModel
         }
     }
 
-    public IActionResult OnPostToCancel(string returnUrl)
+    public IActionResult OnPostToCancel(string returnUrl, long? ts)
     {
         AllowTitle = VerificarTitle;
         AllowChange = false;
         ReturnUrl = returnUrl;
         ModelState.Clear();
+        if (ts is not null)
+        {
+            ResendTime = (long)ts;
+        }
+        else
+        {
+            ResendTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        }
+        ModelState.Clear();
         return Page();
     }
 
-    public async Task<IActionResult> OnPostToChangePhoneAsync(string returnUrl)
+    public async Task<IActionResult> OnPostToChangePhoneAsync(string returnUrl, long? ts)
     {
         AllowTitle = UpdateTitle;
         AllowChange = true;
         ReturnUrl = returnUrl;
+        if (ts is not null)
+        {
+            ResendTime = (long)ts;
+        }
+        else
+        {
+            ResendTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        }
         // Skip validations for Code
         if (!IsModelValidExcept("Code"))
         {
@@ -237,6 +294,8 @@ public class ConfirmPhone : PageModel
                     await _smsSender.PhoneConfirmation(user.Email!, Code);
                     AllowTitle = VerificarTitle;
                     AllowChange = false;
+                    ExecTimer();
+                    ModelState.Clear();
                     return Page();
                 }
                 else
@@ -285,5 +344,10 @@ public class ConfirmPhone : PageModel
             }
             return response;
         }
+    }
+
+    public void ExecTimer()
+    {
+        ResendTime = DateTimeOffset.UtcNow.AddMinutes(5).ToUnixTimeSeconds();
     }
 }

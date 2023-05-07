@@ -32,18 +32,29 @@
                         <div class="w-100 d-flex justify-content-between align-items-center">
                             <div class="my-2">
                                 <button type="submit" asp-page-handler="ToVerify" asp-route-ReturnUrl="@Model.ReturnUrl"
-                                    class="btn btn-primary btn-block">Confirmar</button>
+                                    asp-route-TS="@Model.ResendTime" class="btn btn-primary btn-block">Confirmar</button>
                             </div>
                             <div class="h-100 d-flex flex-column justify-content-center aling-items-between">
                                 <form asp-page-handler="ToAllowChange" asp-route-ReturnUrl="@Model.ReturnUrl" method="post">
                                     <button type="submit" asp-page-handler="ToAllowChange"
-                                        asp-route-ReturnUrl="@Model.ReturnUrl" class="text-black custom-link text-end ">otro
+                                        asp-route-ReturnUrl="@Model.ReturnUrl" asp-route-TS="@Model.ResendTime"
+                                        class="text-black custom-link text-end ">otro
                                         número?</button>
                                 </form>
-                                <form asp-page-handler="ToResend" asp-route-ReturnUrl="@Model.ReturnUrl" method="post">
-                                    <button type="submit" asp-page-handler="ToResend" asp-route-ReturnUrl="@Model.ReturnUrl"
-                                        class="text-black custom-link text-end ">reenviar codigo</button>
-                                </form>
+                                @{
+                                    if (Model.ResendTime <= DateTimeOffset.UtcNow.ToUnixTimeSeconds())
+                                    {
+                                        <form asp-page-handler="ToResend" asp-route-ReturnUrl="@Model.ReturnUrl" method="post">
+                                            <button type="submit" asp-page-handler="ToResend" asp-route-ReturnUrl="@Model.ReturnUrl"
+                                                asp-route-TS="@Model.ResendTime" class="text-black custom-link text-end ">reenviar
+                                                codigo</button>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted description">Espera unos segundos para reenviar el codigo.</span>
+                                    }
+                                }
                             </div>
                         </div>
                     </form>
@@ -56,8 +67,8 @@
                     <form method="post" class="my-3">
                         <div asp-validation-summary="ModelOnly" class="text-danger" role="alert"></div>
                         <div class="form-floating mb-3">
-                            <input asp-for="PhoneNumber" class="form-control" autocomplete="off" aria-required="true"
-                                type="text" />
+                            <input asp-for="PhoneNumber" class="form-control" autocomplete="tel" aria-required="true"
+                                type="tel" />
                             <label asp-for="PhoneNumber" class="form-label"></label>
                             <span asp-validation-for="PhoneNumber" class="text-danger"></span>
                         </div>
@@ -65,11 +76,11 @@
                         <div class="w-100 d-flex justify-content-between align-items-center">
                             <div class="my-2">
                                 <button type="submit" class="btn btn-primary btn-block" asp-route-ReturnUrl="@Model.ReturnUrl"
-                                    asp-page-handler="ToChangePhone">Actualizar</button>
+                                    asp-route-TS="@Model.ResendTime" asp-page-handler="ToChangePhone">Actualizar</button>
                             </div>
                             <form asp-page-handler="ToCancel" method="post" asp-route-ReturnUrl="@Model.ReturnUrl">
                                 <button type="submit" asp-page-handler="ToCancel" asp-route-ReturnUrl="@Model.ReturnUrl"
-                                    class="text-black custom-link text-end">Cancelar</button>
+                                    asp-route-TS="@Model.ResendTime" class="text-black custom-link text-end">Cancelar</button>
                             </form>
                         </div>
                     </form>

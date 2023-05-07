@@ -121,7 +121,7 @@ public class QuickStartProfile : PageModel
                     }
                     string Code = await _userManager.GenerateChangePhoneNumberTokenAsync(user, user.PhoneNumber!);
                     await _smsSender.PhoneConfirmation(user.Email!, Code);
-                    return RedirectToPage("/ConfirmPhone", new { ReturnUrl });
+                    return RedirectToPage("/ConfirmPhone", new { ReturnUrl, TS=DateTimeOffset.UtcNow.AddMinutes(5).ToUnixTimeSeconds() });
                 }
                 else
                 {

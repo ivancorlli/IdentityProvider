@@ -19,7 +19,7 @@ public class SignupModel : PageModel
     public ModelRegister Register { get; set; } = new ModelRegister();
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly RoleManager<ApplicationRole> _roleManager;
-		private readonly IOptions<ReturnUrlOptions> _defaultReturnUrl;
+    private readonly IOptions<ReturnUrlOptions> _defaultReturnUrl;
     private readonly IEmailSender _emailSender;
 
     public string ReturnUrl { get; set; } = string.Empty;
@@ -29,18 +29,19 @@ public class SignupModel : PageModel
         UserManager<ApplicationUser> userManager,
         RoleManager<ApplicationRole> roleManager,
         IEmailSender emailSender,
-			IOptions<ReturnUrlOptions> returnUrl 
+            IOptions<ReturnUrlOptions> returnUrl
         )
     {
         _userManager = userManager;
         _roleManager = roleManager;
         _emailSender = emailSender;
-			_defaultReturnUrl = returnUrl;
+        _defaultReturnUrl = returnUrl;
     }
 
     public IActionResult? OnGet(string returnUrl)
     {
-        if( returnUrl == null) {
+        if (returnUrl == null)
+        {
             return Redirect("/Signin");
         }
         else
@@ -48,26 +49,33 @@ public class SignupModel : PageModel
             ReturnUrl = returnUrl;
             return null;
         }
-		}
+    }
 
     public async Task<IActionResult> OnPostAsync(string returnUrl)
     {
-			ReturnUrl = returnUrl;
-        
-        if (ModelState.IsValid)
+        ReturnUrl = returnUrl;
+
+        if (!ModelState.IsValid)
         {
+            return Page();
+        }
+        else
+        {
+
             // Create a new user and give him some credentials, it's very important to initialize it with false for 'IsAuthenticatedExternaly', It's set TwoFactor authentication enabled for default.
-				ApplicationUser user = ApplicationUser.CreateLocalUser(Register.Email);
+            ApplicationUser user = ApplicationUser.CreateLocalUser(Register.Email);
             IdentityResult result = await _userManager.CreateAsync(user, Register.Password);
             if (result.Succeeded)
             {
                 // Aggreagate a rol, bydeafult an application role
                 bool role = await _roleManager.RoleExistsAsync(DefaultRoles.ApplicationUser);
-                if(role)
+                if (role)
                 {
-                    await _userManager.AddToRoleAsync(user,DefaultRoles.ApplicationUser);
-                }else {
-                    await _userManager.AddToRoleAsync(user,DefaultRoles.DefaultUser);
+                    await _userManager.AddToRoleAsync(user, DefaultRoles.ApplicationUser);
+                }
+                else
+                {
+                    await _userManager.AddToRoleAsync(user, DefaultRoles.DefaultUser);
                 }
 
                 string UserId = await _userManager.GetUserIdAsync(user);
@@ -81,7 +89,7 @@ public class SignupModel : PageModel
                     {
                         UE = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(UserId.ToString())),
                         Code,
-							ReturnUrl = returnUrl,
+                        ReturnUrl = returnUrl,
                         Exp = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(Exp.ToString())),
                     },
                     protocol: Request.Scheme
@@ -97,35 +105,27 @@ public class SignupModel : PageModel
             {
                 foreach (var error in result.Errors)
                 {
-                    if(error.Code == "DuplicateUserName")
+                    if (error.Code == "DuplicateUserName")
                     {
                         Error = $"El correo electrónico '{Register.Email}' ya ha sido registrado.";
-                    }else if(error.Code == "DuplicateEmail"){
+                    }
+                    else if (error.Code == "DuplicateEmail")
+                    {
                         Error = $"El correo electrónico '{Register.Email}' ya ha sido registrado.";
-                    }else {
+                    }
+                    else
+                    {
                         Error = error.Description;
                     }
                     break;
                 }
+                return Page();
             }
         }
-        else
-        {
-            foreach (var modelError in ModelState)
-            {
-                if (modelError.Value.Errors.Count > 0)
-                {
-                    Error = modelError.Value.Errors.First().ErrorMessage.ToString();
-                    break;
-                }
-            }
-            return Page();
-        }
-        return Page();
     }
 
     public IActionResult OnPostToSignIn(string url)
     {
-        return RedirectToPage("/Signin", new {ReturnUrl = url});
+        return RedirectToPage("/Signin", new { ReturnUrl = url });
     }
 }
